@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Activity, LogIn, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -21,7 +20,7 @@ const NavItem = ({ name, href, hasDropdown }) => (
 );
 
 
-function Navbar() {
+function Navbar({ onLoginClick }) { // Added onLoginClick prop
     return (
         <nav className="bg-white fixed top-0 w-full z-20 shadow-sm border-b border-gray-100">
             <div className="w-full mx-auto px-4 sm:px-6 lg:px-20 py-4">
@@ -40,13 +39,14 @@ function Navbar() {
                             ))}
                         </div>
 
-                        <Link
-                            to="/login"
-                            className="py-2 px-6 text-white rounded font-bold bg-[#CC3D4B] transition duration-150 flex items-center shadow-md whitespace-nowrap"
+                        {/* Changed Link to a button and use the handler */}
+                        <button
+                            onClick={onLoginClick}
+                            className="py-2 px-6 text-white rounded font-bold bg-[#CC3D4B] transition duration-150 flex items-center shadow-md whitespace-nowrap hover:bg-[#a9303c] active:scale-[0.98]"
                         >
                             <LogIn className="w-5 h-5 mr-1" />
                             <span>Login</span>
-                        </Link>
+                        </button>
                     </div>
                 </div>
             </div>
