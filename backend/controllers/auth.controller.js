@@ -134,3 +134,93 @@ export const listAllNGOs = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
+
+
+
+// -----------------------------
+// FORGOT PASSWORD - STEP 1 (Get Security Question)
+// -----------------------------
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email)
+      return res.status(400).json({ message: "Email is required" });
+
+    const user = await User.findOne({ email });
+
+    if (!user)
+      return res.status(404).json({ message: "User not found" });
+
+    return res.status(200).json({
+      message: "Security question retrieved",
+      securityQuestion: user.securityQuestion,
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// -----------------------------
+// VERIFY SECURITY ANSWER - STEP 2
+// -----------------------------
+export const verifySecurityAnswer = async (req, res) => {
+  try {
+    const { email, securityAnswer } = req.body;
+
+    if (!email || !securityAnswer)
+      return res.status(400).json({ message: "Email and answer required" });
+
+    const user = await User.findOne({ email });
+
+    if (!user)
+      return res.status(404).json({ message: "User not found" });
+
+    // Compare answer (case-insensitive)
+    if (user.securityAnswer.trim().toLowerCase() !== securityAnswer.trim().toLowerCase()) {
+      return res.status(401).json({ message: "Incorrect security answer" });
+    }
+
+    return res.status(200).json({
+      message: "Security answer verified",
+      email: user.email,     // pass back email for password reset
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+// -----------------------------
+// RESET PASSWORD - STEP 3
+// -----------------------------
+export const resetPassword = async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+
+    if (!email || !newPassword)
+      return res.status(400).json({ message: "Email and new password required" });
+
+    const user = await User.findOne({ email });
+
+    if (!user)
+      return res.status(404).json({ message: "User not found" });
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    user.password = hashedPassword;
+    await user.save();
+
+    return res.status(200).json({ message: "Password reset successful" });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
