@@ -1,135 +1,144 @@
-import Donation from '../models/Donation.model.js';
-import User from '../models/User.model.js';
+import Donation from "../models/Donation.model.js";
 
-// Create a new donation
+// --------------------------------------------------
+// CREATE DONATION (Donor Only)
+// --------------------------------------------------
 export const createDonation = async (req, res) => {
   try {
-    const { donorId, foodType, quantity, expiresInHours, location } = req.body;
+    if (req.user.role !== "donor") {
+      return res.status(403).json({ message: "Only donors can create donations" });
+    }
 
-    if (!donorId || !foodType || !quantity || !expiresInHours || !location) {
-      return res.status(400).json({ message: 'All fields are required' });
+    const { foodType, quantity, expiresInHours, location } = req.body;
+
+    if (!foodType || !quantity || !expiresInHours || !location.lat || !location.lng) {
+      return res.status(400).json({ message: "Missing required donation fields" });
     }
 
     const donation = await Donation.create({
-      donorId,
+      donorId: req.user._id,
       foodType,
       quantity,
       expiresInHours,
-      location,
+      location
     });
 
-    return res.status(201).json({
-      message: 'Donation created successfully',
-      donation,
+    return res.json({
+      message: "Donation created successfully",
+      donation
     });
+
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: 'Server error' });
+    console.error("Create Donation Error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// Get all donations
-export const getAllDonations = async (req, res) => {
+// --------------------------------------------------
+// GET PENDING DONATIONS (Public / NGO)
+// --------------------------------------------------
+export const getPendingDonations = async (req, res) => {
   try {
-    const donations = await Donation.find().populate('donorId', 'name email location');
-    return res.status(200).json(donations);
+    const donations = await Donation.find({ status: "pending" })
+      .populate("donorId", "name location");
+
+    return res.json(donations);
+
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: 'Server error' });
+    console.error("Get Pending Donations Error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// Get donation by ID
-export const getDonationById = async (req, res) => {
+// --------------------------------------------------
+// GET DONOR'S DONATIONS (Donor Dashboard)
+// --------------------------------------------------
+export const getMyDonations = async (req, res) => {
   try {
-    const { id } = req.params;
-    const donation = await Donation.findById(id).populate('donorId', 'name email location').populate('acceptedBy', 'name email location');
-    
-    if (!donation) {
-      return res.status(404).json({ message: 'Donation not found' });
+    if (req.user.role !== "donor") {
+      return res.status(403).json({ message: "Only donors can view their donations" });
     }
 
-    return res.status(200).json(donation);
+    const donations = await Donation.find({ donorId: req.user._id })
+      .populate("acceptedBy", "name location");
+
+    return res.json(donations);
+
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: 'Server error' });
+    console.error("Get My Donations Error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// Update donation status
-export const updateDonationStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status, acceptedBy } = req.body;
-
-    if (!status) {
-      return res.status(400).json({ message: 'Status is required' });
-    }
-
-    const donation = await Donation.findByIdAndUpdate(
-      id,
-      { status, ...(acceptedBy && { acceptedBy }) },
-      { new: true }
-    ).populate('donorId', 'name email location').populate('acceptedBy', 'name email location');
-
-    if (!donation) {
-      return res.status(404).json({ message: 'Donation not found' });
-    }
-
-    return res.status(200).json({
-      message: 'Donation status updated',
-      donation,
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: 'Server error' });
-  }
-};
-
-// Accept a donation
+// --------------------------------------------------
+// ACCEPT DONATION (NGO Only)
+// --------------------------------------------------
 export const acceptDonation = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { ngoId, ngoLocation } = req.body;
-
-    if (!ngoId) {
-      return res.status(400).json({ message: 'NGO ID is required' });
+    if (req.user.role !== "ngo") {
+      return res.status(403).json({ message: "Only NGOs can accept donations" });
     }
 
-    const donation = await Donation.findByIdAndUpdate(
-      id,
-      {
-        status: 'accepted',
-        acceptedBy: ngoId,
-        ...(ngoLocation && { ngoLocation }),
-      },
-      { new: true }
-    ).populate('donorId', 'name email location').populate('acceptedBy', 'name email location');
+    const donation = await Donation.findById(req.params.id);
 
-    if (!donation) {
-      return res.status(404).json({ message: 'Donation not found' });
+    if (!donation) return res.status(404).json({ message: "Donation not found" });
+
+    if (donation.status !== "pending") {
+      return res.status(400).json({ message: "Donation already accepted" });
     }
 
-    return res.status(200).json({
-      message: 'Donation accepted',
-      donation,
+    donation.status = "accepted";
+    donation.acceptedBy = req.user._id;
+
+    await donation.save();
+
+    return res.json({
+      message: "Donation accepted",
+      donation
     });
+
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: 'Server error' });
+    console.error("Accept Donation Error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// Get live donations (for real-time map)
-export const getLiveDonations = async (req, res) => {
+// --------------------------------------------------
+// UPDATE NGO LIVE LOCATION (Tracking)
+// --------------------------------------------------
+export const updateNgoLocation = async (req, res) => {
   try {
-    const donations = await Donation.find({ status: { $in: ['pending', 'accepted'] } })
-      .populate('donorId', 'name email location')
-      .populate('acceptedBy', 'name email location');
+    if (req.user.role !== "ngo") {
+      return res.status(403).json({ message: "Only NGOs can update live location" });
+    }
 
-    return res.status(200).json(donations);
+    const { lat, lng } = req.body;
+
+    if (!lat || !lng) {
+      return res.status(400).json({ message: "Missing NGO coordinates" });
+    }
+
+    const donation = await Donation.findById(req.params.id);
+
+    if (!donation) return res.status(404).json({ message: "Donation not found" });
+
+    // Only the NGO who accepted can update tracking
+    if (donation.acceptedBy?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Not authorized to update this donation" });
+    }
+
+    donation.ngoLocation = { lat, lng };
+    donation.status = "onTheWay";
+
+    await donation.save();
+
+    return res.json({
+      message: "NGO live location updated",
+      donation
+    });
+
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: 'Server error' });
+    console.error("Update NGO Location Error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };

@@ -1,20 +1,25 @@
-import express from 'express';
+import express from "express";
+import authMiddleware from "../middleware/auth.middleware.js";
+
 import {
   createDonation,
-  getAllDonations,
-  getDonationById,
-  updateDonationStatus,
+  getPendingDonations,
+  getMyDonations,
   acceptDonation,
-  getLiveDonations,
-} from '../controllers/donation.controller.js';
+  updateNgoLocation
+} from "../controllers/donation.controller.js";
 
 const router = express.Router();
 
-router.post('/', createDonation);
-router.get('/', getAllDonations);
-router.get('/live', getLiveDonations);
-router.get('/:id', getDonationById);
-router.patch('/:id', updateDonationStatus);
-router.post('/:id/accept', acceptDonation);
+
+router.post("/create", authMiddleware, createDonation);
+
+router.get("/pending", getPendingDonations);
+
+router.get("/my", authMiddleware, getMyDonations);
+
+router.post("/:id/accept", authMiddleware, acceptDonation);
+
+router.post("/:id/update-location", authMiddleware, updateNgoLocation);
 
 export default router;
