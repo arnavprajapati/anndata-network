@@ -50,7 +50,30 @@ const donationSchema = new mongoose.Schema({
   ngoLocation: {
     lat: { type: Number, default: null },
     lng: { type: Number, default: null }
-  }
+  },
+  reviews: [
+    {
+      reviewerId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'User',
+        required: true 
+      },
+      rating: { 
+        type: Number, 
+        min: 1, 
+        max: 5, 
+        required: true 
+      },
+      comment: { 
+        type: String, 
+        default: "" 
+      },
+      createdAt: { 
+        type: Date, 
+        default: Date.now 
+      }
+    }
+  ]
 
 },
 { timestamps: true }
