@@ -26,11 +26,11 @@ const generateToken = (user) => {
 // -----------------------------
 export const registerUser = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, securityQuestion, securityAnswer } = req.body;
 
     // basic validation
-    if (!name || !email || !password || !role)
-      return res.status(400).json({ message: "Name, email, password and role required" });
+    if (!name || !email || !password || !role || !securityQuestion || !securityAnswer)
+      return res.status(400).json({ message: "Name, email, password, role, security question and answer are required" });
     if (!["donor", "ngo"].includes(role))
       return res.status(400).json({ message: "Invalid role" });
 
@@ -48,8 +48,11 @@ export const registerUser = async (req, res) => {
       email,
       password: hashedPassword,
       role,
+      securityQuestion,
+      securityAnswer,
     });
-
+    console.log(user);
+    
     // create token
     const token = generateToken(user);
 

@@ -52,12 +52,14 @@ const SignupPage = ({ onSwitchToLogin }) => {
         };
 
         try {
-            const response = await fetch(`${API_BASE_URL}/auth/register`, {
+            const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                  
                 },
-                body: JSON.stringify(payload),
+                credentials: 'include',  
+    body: JSON.stringify(payload),
             });
 
             const data = await response.json();
@@ -198,6 +200,7 @@ const SignupPage = ({ onSwitchToLogin }) => {
                     id="email" 
                     label="Email Address" 
                     type="email" 
+                    name="email"
                     icon={Mail} 
                     value={formData.email} 
                     onChange={handleChange} 
@@ -206,7 +209,8 @@ const SignupPage = ({ onSwitchToLogin }) => {
                 <FormInput 
                     id="password" 
                     label="Password" 
-                    type="password" 
+                    type="password"
+                    name="password" 
                     icon={Lock} 
                     value={formData.password} 
                     onChange={handleChange} 
