@@ -24,6 +24,15 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
 
+    securityQuestion: {
+      type: String,
+      required: true,
+    },
+    securityAnswer: {
+      type: String,
+      required: true,
+    },
+
     location: {
       lat: { type: Number, default: null },
       lng: { type: Number, default: null },
