@@ -68,7 +68,12 @@ const LogInPage = ({ onSwitchToSignup }) => {
         }
     };
 
-    // ... (rest of the component structure remains the same)
+    const handleForgotPassword = () => {
+        // In a real application, this would redirect to a /forgot-password route
+        console.log('Forgot Password clicked. Implement redirection or modal logic here.');
+        setMessage({ type: 'error', text: 'Password reset feature is under development. Please contact support.' });
+    };
+
     const buttonStyle = { backgroundColor: PRIMARY_RED };
     const hoverStyle = { backgroundColor: '#a9303c' };
 
@@ -100,6 +105,17 @@ const LogInPage = ({ onSwitchToSignup }) => {
                     required 
                 />
 
+                <div className="text-right -mt-4 mb-6">
+                    <button 
+                        type="button" 
+                        onClick={handleForgotPassword}
+                        className="text-sm font-semibold hover:underline transition duration-150 focus:outline-none"
+                        style={{ color: PRIMARY_RED }}
+                    >
+                        Forgot Password?
+                    </button>
+                </div>
+                
                 <button
                     type="submit"
                     disabled={isLoading}
