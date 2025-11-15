@@ -165,7 +165,7 @@ const App = () => {
                     <Routes>
                         <Route
                             path="/"
-                            element={<ImageSliderContainer />}
+                            element={<ImageSliderContainer onLoginRequest={openAuthModal} />}
                         />
                         <Route path="/donate" element={
                             <div className="pt-24 px-4 sm:px-6 lg:px-20 py-12">

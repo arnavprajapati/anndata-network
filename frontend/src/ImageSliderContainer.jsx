@@ -8,7 +8,7 @@ function ImagePagination({ currentSlideIndex, onDotClick, totalSlides }) {
                     key={index}
                     onClick={() => onDotClick(index)}
                     className={`w-3 h-3 rounded-full transition-all duration-300 ${index === currentSlideIndex
-                        ? 'bg-red-500 w-8'
+                        ? 'bg-green-400 w-8'
                         : 'bg-gray-400 hover:bg-gray-300'
                         }`}
                     aria-label={`Go to slide ${index + 1}`}
@@ -18,8 +18,10 @@ function ImagePagination({ currentSlideIndex, onDotClick, totalSlides }) {
     );
 }
 
-function ImageSliderContainer() {
+import { User, X } from 'lucide-react';
+function ImageSliderContainer({ onLoginRequest }) {
     const [currentSlide, setCurrentSlide] = useState(0);
+    const [showLoginPopup, setShowLoginPopup] = useState(false);
 
     const sliderData = [
         {
@@ -37,7 +39,7 @@ function ImageSliderContainer() {
         {
             imageUrl: "https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=1200&h=600&fit=crop",
             heading: "Turn surplus food into hope — connect with NGOs instantly.",
-            buttonText: "Learn More",
+            buttonText: "Donate now",
             buttonLink: "#"
         },
     ];
@@ -63,11 +65,15 @@ function ImageSliderContainer() {
 
     const currentSlideContent = sliderData[currentSlide];
 
+    // Handler for Donate/Learn More button
+    const handleDonateClick = () => {
+        setShowLoginPopup(true);
+    };
+
     return (
         <div className="w-full py-[10%] bg-gray-100">
             <div className="relative w-full max-w-7xl mx-auto px-4">
                 <div className="relative h-[400px] sm:h-[500px] flex items-center justify-center overflow-visible">
-
                     {/* Previous Slide (Left) */}
                     <div className="absolute left-0 w-[15%] h-[85%] opacity-40 transition-all duration-500 hidden lg:block">
                         <img
@@ -93,12 +99,12 @@ function ImageSliderContainer() {
                             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold max-w-2xl leading-tight mb-6">
                                 {currentSlideContent.heading}
                             </h2>
-                            <a
-                                href={currentSlideContent.buttonLink}
-                                className="inline-block py-3 px-8 bg-red-600 hover:bg-red-700 transition-colors duration-300 rounded-lg text-base sm:text-lg font-semibold shadow-lg max-w-fit"
+                            <button
+                                onClick={handleDonateClick}
+                                className="inline-block py-3 px-8 bg-[#2d8659] hover:bg-[#50b184] transition-colors duration-300 rounded-lg text-base sm:text-lg font-semibold shadow-lg max-w-fit animate-pulse-grow"
                             >
                                 {currentSlideContent.buttonText}
-                            </a>
+                            </button>
                         </div>
 
                         {/* Navigation Arrows */}
@@ -120,6 +126,35 @@ function ImageSliderContainer() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
                         </button>
+
+                        {/* Animated Login Popup */}
+                        {showLoginPopup && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fadeIn">
+                                <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full relative animate-scaleIn">
+                                    <button
+                                        className="absolute top-4 right-4 text-gray-400 hover:text-[#2d8659] transition-colors"
+                                        onClick={() => setShowLoginPopup(false)}
+                                        aria-label="Close"
+                                    >
+                                        <X className="w-6 h-6" />
+                                    </button>
+                                    <div className="flex flex-col items-center text-center">
+                                        <User className="w-12 h-12 text-[#2d8659] mb-2 animate-pulse-grow" />
+                                        <h3 className="text-2xl font-bold mb-2 text-[#1f5c3a]">Login Required</h3>
+                                        <p className="text-gray-600 mb-4 font-semibold">To donate food, please log in as a <span className="text-[#2d8659]">Donor</span> or <span className="text-[#2d8659]">NGO</span>.<br />This helps us coordinate and track your impact!</p>
+                                        <button
+                                            className="py-3 px-8 bg-[#2d8659] hover:bg-[#52b788] text-white font-bold rounded-lg shadow-lg transition-all duration-200 animate-pulse-grow"
+                                            onClick={() => {
+                                                setShowLoginPopup(false);
+                                                if (onLoginRequest) onLoginRequest();
+                                            }}
+                                        >
+                                            Log In / Sign Up
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Next Slide (Right) */}
