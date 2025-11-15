@@ -1,16 +1,16 @@
 import React from 'react';
 
-function ImagePagination({ currentSlideIndex, onDotClick, totalSlides = 8 }) { 
+function ImagePagination({ currentSlideIndex, onDotClick, totalSlides = 8 }) {
     const slides = Array.from({ length: totalSlides }, (_, i) => i);
-    
-    const actionColor = '#CC3D4B';
-    const inactiveColor = '#777777'; 
+
+    const actionColor = '#387ED1';
+    const inactiveColor = '#777777';
 
     return (
         <div className="flex justify-center space-x-3 p-4">
             {slides.map((index) => {
                 const isActive = index === currentSlideIndex;
-                
+
                 return (
                     <button
                         key={index}

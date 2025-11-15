@@ -55,10 +55,10 @@ const DonationItem = ({ donation }) => {
                             <p className="text-sm text-gray-600 font-semibold">Quantity: {donation.quantity} units</p>
                         </div>
                         <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase font-semibold ${donation.status === 'pending' ? 'bg-yellow-200 text-yellow-800' :
-                                donation.status === 'accepted' ? 'bg-blue-200 text-blue-800' :
-                                    donation.status === 'onTheWay' ? 'bg-green-200 text-green-800' :
-                                        donation.status === 'picked' ? 'bg-purple-200 text-purple-800' :
-                                            'bg-green-300 text-green-900'
+                            donation.status === 'accepted' ? 'bg-blue-200 text-blue-800' :
+                                donation.status === 'onTheWay' ? 'bg-green-200 text-green-800' :
+                                    donation.status === 'picked' ? 'bg-purple-200 text-purple-800' :
+                                        'bg-green-300 text-green-900'
                             }`}>
                             {donation.status}
                         </span>
@@ -334,7 +334,7 @@ const DonorDashboard = ({ onLogout }) => {
         return (
             <div className="min-h-screen pt-20 flex items-center justify-center">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#CC3D4B] mx-auto mb-4"></div>
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#387ED1] mx-auto mb-4"></div>
                     <p className="text-lg text-gray-600 font-semibold">Loading Dashboard...</p>
                 </div>
             </div>
@@ -358,7 +358,7 @@ const DonorDashboard = ({ onLogout }) => {
                         title="Total Donations"
                         value={stats.total}
                         subtitle="All time"
-                        color="#CC3D4B"
+                        color="#387ED1"
                         bgColor="bg-white"
                     />
                     <StatCard
@@ -387,7 +387,7 @@ const DonorDashboard = ({ onLogout }) => {
                     />
                 </div>
 
-                <div className="bg-gradient-to-r from-[#CC3D4B] to-[#a9303c] text-white rounded-xl p-6 mb-8 shadow-lg font-semibold">
+                <div className="bg-gradient-to-r from-[#387ED1] to-[#a9303c] text-white rounded-xl p-6 mb-8 shadow-lg font-semibold">
                     <div className="flex items-center justify-between">
                         <div>
                             <h3 className="text-2xl font-bold mb-2">Your Impact</h3>

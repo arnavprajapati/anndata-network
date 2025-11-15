@@ -368,7 +368,7 @@ const NgoDashboard = ({ onLogout }) => {
         return (
             <div className="min-h-screen pt-20 flex items-center justify-center">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#CC3D4B] mx-auto mb-4"></div>
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#387ED1] mx-auto mb-4"></div>
                     <p className="text-lg text-gray-600 font-semibold">Loading Dashboard...</p>
                 </div>
             </div>
@@ -392,7 +392,7 @@ const NgoDashboard = ({ onLogout }) => {
                         title="Total Accepted"
                         value={stats.totalAccepted}
                         subtitle="All donations"
-                        color="#CC3D4B"
+                        color="#387ED1"
                         bgColor="bg-white"
                     />
                     <StatCard
@@ -440,7 +440,7 @@ const NgoDashboard = ({ onLogout }) => {
                         <div className="p-6 bg-white rounded-xl shadow-lg border border-gray-200">
                             <div className="flex justify-between items-center mb-4">
                                 <h2 className="text-2xl font-bold flex items-center font-semibold" style={{ color: DARK_CHARCOAL }}>
-                                    <Map className="w-6 h-6 mr-2 text-[#CC3D4B]" /> Nearby Donations
+                                    <Map className="w-6 h-6 mr-2 text-[#387ED1]" /> Nearby Donations
                                 </h2>
                                 <button
                                     onClick={loadDonations}
@@ -567,8 +567,8 @@ const NgoDashboard = ({ onLogout }) => {
                                                         onClick={() => handlePickupCompleted(donation._id)}
                                                         disabled={donation.status !== 'onTheWay'}
                                                         className={`w-full py-2 rounded-lg font-semibold text-sm ${donation.status === 'onTheWay'
-                                                                ? 'bg-green-600 hover:bg-green-700 text-white shadow-md cursor-pointer'
-                                                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                                            ? 'bg-green-600 hover:bg-green-700 text-white shadow-md cursor-pointer'
+                                                            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                                             }`}
                                                     >
                                                         <CheckCircle className="w-4 h-4 inline mr-1" />

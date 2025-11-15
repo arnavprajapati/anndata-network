@@ -6,22 +6,22 @@ function ImageSliderContainer() {
 
     const sliderData = [
         {
-            imageUrl: "https://b.zmtcdn.com/data/o2_assets/a6df64139b380317b13dca3148ca9b0f1745347435.jpeg", 
+            imageUrl: "https://b.zmtcdn.com/data/o2_assets/a6df64139b380317b13dca3148ca9b0f1745347435.jpeg",
             heading: "Help Ashok Deshmane give orphans of farmer suicides a loving home",
             buttonText: "Donate now",
-            buttonLink: "/donate"
+            buttonLink: "/login"
         },
         {
             imageUrl: "https://b.zmtcdn.com/data/o2_assets/a6df64139b380317b13dca3148ca9b0f1745347435.jpeg",
             heading: "Support our mission to rescue children from trafficking and terrors in red light areas",
             buttonText: "Donate now",
-            buttonLink: "/donate"
+            buttonLink: "/login"
         },
         {
-            imageUrl: "https://b.zmtcdn.com/data/o2_assets/a6df64139b380317b13dca3148ca9b0f1745347435.jpeg", 
+            imageUrl: "https://b.zmtcdn.com/data/o2_assets/a6df64139b380317b13dca3148ca9b0f1745347435.jpeg",
             heading: "Another great cause needs your help today to build a better future",
             buttonText: "Learn More",
-            buttonLink: "/learn-more"
+            buttonLink: "/login"
         },
     ];
 
@@ -44,7 +44,7 @@ function ImageSliderContainer() {
     const currentSlideContent = sliderData[currentSlide];
 
     return (
-        <div className="relative w-full h-[700px] overflow-hidden">
+        <div className="relative w-full h-[814px] overflow-hidden">
             <img
                 src={currentSlideContent.imageUrl}
                 alt={`Slide ${currentSlide + 1}`}
@@ -59,7 +59,7 @@ function ImageSliderContainer() {
                 </h2>
                 <a
                     href={currentSlideContent.buttonLink}
-                    className="inline-block py-3 px-8 bg-[#CC3D4B] hover:bg-[#a9303c] transition-colors duration-300 rounded text-lg font-semibold shadow-md max-w-fit"
+                    className="inline-block py-3 px-8 bg-[#387ED1] hover:bg-black transition-colors duration-300 rounded text-lg font-semibold shadow-md max-w-fit"
                 >
                     {currentSlideContent.buttonText}
                 </a>

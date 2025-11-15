@@ -40,7 +40,7 @@ const LogInPage = ({ onSwitchToSignup, onAuthSuccess }) => {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'lication/json',
                 },
                 body: JSON.stringify({
                     email: formData.email,
@@ -53,21 +53,21 @@ const LogInPage = ({ onSwitchToSignup, onAuthSuccess }) => {
             if (response.ok) {
                 // Call the unified success handler
                 if (onAuthSuccess) {
-                    onAuthSuccess({ 
-                        token: data.token, 
+                    onAuthSuccess({
+                        token: data.token,
                         user: data.user
                     });
                 }
-                
-                setMessage({ 
-                    type: 'success', 
-                    text: `Welcome back, ${data.user.name}!` 
+
+                setMessage({
+                    type: 'success',
+                    text: `Welcome back, ${data.user.name}!`
                 });
 
             } else {
-                setMessage({ 
-                    type: 'error', 
-                    text: data.message || 'Login failed. Please check your credentials.' 
+                setMessage({
+                    type: 'error',
+                    text: data.message || 'Login failed. Please check your credentials.'
                 });
             }
         } catch (error) {
@@ -95,20 +95,20 @@ const LogInPage = ({ onSwitchToSignup, onAuthSuccess }) => {
 
             <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="relative">
-                    <FormInput 
-                        id="email" 
-                        label="Email Address" 
-                        type="email" 
-                        icon={Mail} 
-                        value={formData.email} 
-                        onChange={handleChange} 
-                        required 
+                    <FormInput
+                        id="email"
+                        label="Email Address"
+                        type="email"
+                        icon={Mail}
+                        value={formData.email}
+                        onChange={handleChange}
+                        required
                     />
                 </div>
 
                 <div className="relative">
                     <div className="relative mb-6">
-                        <div className="flex items-center border border-gray-300 rounded-lg shadow-sm overflow-hidden transition duration-150 focus-within:ring-2 focus-within:ring-[#CC3D4B] focus-within:ring-offset-2">
+                        <div className="flex items-center border border-gray-300 rounded-lg shadow-sm overflow-hidden transition duration-150 focus-within:ring-2 focus-within:ring-[#387ED1] focus-within:ring-offset-2">
                             <div className="pl-3 py-3">
                                 <Lock className="w-5 h-5 text-gray-400" />
                             </div>
@@ -133,7 +133,7 @@ const LogInPage = ({ onSwitchToSignup, onAuthSuccess }) => {
                 </div>
 
                 <div className="text-right -mt-4 mb-6">
-                    <button 
+                    <button
                         type="button"
                         onClick={() => setShowForgotPassword(true)}
                         className="text-sm font-semibold hover:underline transition duration-150"
@@ -142,7 +142,7 @@ const LogInPage = ({ onSwitchToSignup, onAuthSuccess }) => {
                         Forgot Password?
                     </button>
                 </div>
-                
+
                 <button
                     type="submit"
                     disabled={isLoading}
@@ -163,7 +163,7 @@ const LogInPage = ({ onSwitchToSignup, onAuthSuccess }) => {
                     )}
                 </button>
             </form>
-            
+
             <div className="relative my-8">
                 <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-gray-300"></div>
@@ -173,10 +173,10 @@ const LogInPage = ({ onSwitchToSignup, onAuthSuccess }) => {
                 </div>
             </div>
 
-            <button 
-                type="button" 
+            <button
+                type="button"
                 onClick={onSwitchToSignup}
-                className="w-full py-3 border-2 border-[#CC3D4B] text-[#CC3D4B] font-bold rounded-lg hover:bg-[#CC3D4B] hover:text-white transition duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+                className="w-full py-3 border-2 border-[#387ED1] text-[#387ED1] font-bold rounded-lg hover:bg-[#387ED1] hover:text-white transition duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
             >
                 Create New Account
             </button>

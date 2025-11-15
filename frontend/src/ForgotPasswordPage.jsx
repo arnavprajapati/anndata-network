@@ -3,7 +3,7 @@ import { Mail, Key, Lock, ArrowLeft, CheckCircle, Loader, AlertCircle, Eye, EyeO
 import { FormInput, MessageDisplay, PRIMARY_RED, DARK_CHARCOAL, API_BASE_URL } from './Shared';
 
 const ForgotPasswordPage = ({ onBackToLogin }) => {
-    const [step, setStep] = useState(1); 
+    const [step, setStep] = useState(1);
     const [email, setEmail] = useState('');
     const [securityQuestion, setSecurityQuestion] = useState('');
     const [securityAnswer, setSecurityAnswer] = useState('');
@@ -27,9 +27,9 @@ const ForgotPasswordPage = ({ onBackToLogin }) => {
         }
 
         try {
-            
+
             setStep(2);
-            setSecurityQuestion('What is your mother\'s maiden name?'); 
+            setSecurityQuestion('What is your mother\'s maiden name?');
             setMessage({ type: 'success', text: 'Email verified! Please answer your security question.' });
 
         } catch (error) {
@@ -71,9 +71,9 @@ const ForgotPasswordPage = ({ onBackToLogin }) => {
                 setStep(3);
                 setMessage({ type: 'success', text: 'Security verified! Now create your new password.' });
             } else {
-                setMessage({ 
-                    type: 'error', 
-                    text: data.message || 'Incorrect answer. Please try again.' 
+                setMessage({
+                    type: 'error',
+                    text: data.message || 'Incorrect answer. Please try again.'
                 });
             }
         } catch (error) {
@@ -123,20 +123,20 @@ const ForgotPasswordPage = ({ onBackToLogin }) => {
             const data = await response.json();
 
             if (response.ok) {
-                setMessage({ 
-                    type: 'success', 
-                    text: 'Password reset successful! Redirecting to login...' 
+                setMessage({
+                    type: 'success',
+                    text: 'Password reset successful! Redirecting to login...'
                 });
-                
+
                 // Redirect to login after 2 seconds
                 setTimeout(() => {
                     onBackToLogin();
                 }, 2000);
 
             } else {
-                setMessage({ 
-                    type: 'error', 
-                    text: data.message || 'Failed to reset password. Token may have expired.' 
+                setMessage({
+                    type: 'error',
+                    text: data.message || 'Failed to reset password. Token may have expired.'
                 });
             }
         } catch (error) {
@@ -155,27 +155,24 @@ const ForgotPasswordPage = ({ onBackToLogin }) => {
                 {[1, 2, 3].map((s) => (
                     <React.Fragment key={s}>
                         <div className="flex flex-col items-center">
-                            <div 
-                                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${
-                                    s < step 
-                                        ? 'bg-green-500 text-white' 
-                                        : s === step 
-                                        ? 'bg-[#CC3D4B] text-white shadow-lg scale-110' 
+                            <div
+                                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${s < step
+                                    ? 'bg-green-500 text-white'
+                                    : s === step
+                                        ? 'bg-[#387ED1] text-white shadow-lg scale-110'
                                         : 'bg-gray-200 text-gray-500'
-                                }`}
+                                    }`}
                             >
                                 {s < step ? <CheckCircle className="w-5 h-5" /> : s}
                             </div>
-                            <p className={`mt-2 text-xs font-medium ${
-                                s === step ? 'text-[#CC3D4B]' : 'text-gray-500'
-                            }`}>
+                            <p className={`mt-2 text-xs font-medium ${s === step ? 'text-[#387ED1]' : 'text-gray-500'
+                                }`}>
                                 {s === 1 ? 'Email' : s === 2 ? 'Verify' : 'Reset'}
                             </p>
                         </div>
                         {s < 3 && (
-                            <div className={`flex-1 h-1 mx-2 transition-all duration-300 rounded ${
-                                s < step ? 'bg-green-500' : 'bg-gray-200'
-                            }`}></div>
+                            <div className={`flex-1 h-1 mx-2 transition-all duration-300 rounded ${s < step ? 'bg-green-500' : 'bg-gray-200'
+                                }`}></div>
                         )}
                     </React.Fragment>
                 ))}
@@ -187,7 +184,7 @@ const ForgotPasswordPage = ({ onBackToLogin }) => {
         <div className="animate-fadeIn">
             {/* Header */}
             <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-[#CC3D4B] rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-[#387ED1] rounded-full flex items-center justify-center mx-auto mb-4">
                     <Key className="w-8 h-8 text-white" />
                 </div>
                 <h2 className="text-3xl font-extrabold mb-2" style={{ color: DARK_CHARCOAL }}>
@@ -213,22 +210,21 @@ const ForgotPasswordPage = ({ onBackToLogin }) => {
                         </p>
                     </div>
 
-                    <FormInput 
-                        id="email" 
-                        label="Email Address" 
-                        type="email" 
-                        icon={Mail} 
-                        value={email} 
-                        onChange={(e) => setEmail(e.target.value)} 
-                        required 
+                    <FormInput
+                        id="email"
+                        label="Email Address"
+                        type="email"
+                        icon={Mail}
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
                     />
 
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className={`w-full py-3.5 text-white font-bold rounded-lg transition duration-200 shadow-lg transform ${
-                            !isLoading ? 'hover:scale-[1.02] active:scale-[0.98]' : 'cursor-not-allowed opacity-70'
-                        } flex items-center justify-center`}
+                        className={`w-full py-3.5 text-white font-bold rounded-lg transition duration-200 shadow-lg transform ${!isLoading ? 'hover:scale-[1.02] active:scale-[0.98]' : 'cursor-not-allowed opacity-70'
+                            } flex items-center justify-center`}
                         style={buttonStyle}
                     >
                         {isLoading ? (
@@ -250,14 +246,14 @@ const ForgotPasswordPage = ({ onBackToLogin }) => {
                         <p className="text-gray-700">{securityQuestion}</p>
                     </div>
 
-                    <FormInput 
-                        id="securityAnswer" 
-                        label="Your Answer" 
-                        type="text" 
-                        icon={Key} 
-                        value={securityAnswer} 
-                        onChange={(e) => setSecurityAnswer(e.target.value)} 
-                        required 
+                    <FormInput
+                        id="securityAnswer"
+                        label="Your Answer"
+                        type="text"
+                        icon={Key}
+                        value={securityAnswer}
+                        onChange={(e) => setSecurityAnswer(e.target.value)}
+                        required
                     />
 
                     <div className="flex gap-3">
@@ -272,9 +268,8 @@ const ForgotPasswordPage = ({ onBackToLogin }) => {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className={`flex-1 flex items-center justify-center py-3.5 text-white font-bold rounded-lg transition duration-200 shadow-lg transform ${
-                                !isLoading ? 'hover:scale-[1.02] active:scale-[0.98]' : 'cursor-not-allowed opacity-70'
-                            }`}
+                            className={`flex-1 flex items-center justify-center py-3.5 text-white font-bold rounded-lg transition duration-200 shadow-lg transform ${!isLoading ? 'hover:scale-[1.02] active:scale-[0.98]' : 'cursor-not-allowed opacity-70'
+                                }`}
                             style={buttonStyle}
                         >
                             {isLoading ? (
@@ -300,7 +295,7 @@ const ForgotPasswordPage = ({ onBackToLogin }) => {
                     </div>
 
                     <div className="relative">
-                        <div className="flex items-center border border-gray-300 rounded-lg shadow-sm overflow-hidden transition duration-150 focus-within:ring-2 focus-within:ring-[#CC3D4B] focus-within:ring-offset-2">
+                        <div className="flex items-center border border-gray-300 rounded-lg shadow-sm overflow-hidden transition duration-150 focus-within:ring-2 focus-within:ring-[#387ED1] focus-within:ring-offset-2">
                             <div className="pl-3 py-3">
                                 <Lock className="w-5 h-5 text-gray-400" />
                             </div>
@@ -325,7 +320,7 @@ const ForgotPasswordPage = ({ onBackToLogin }) => {
 
                     {/* Confirm Password */}
                     <div className="relative">
-                        <div className="flex items-center border border-gray-300 rounded-lg shadow-sm overflow-hidden transition duration-150 focus-within:ring-2 focus-within:ring-[#CC3D4B] focus-within:ring-offset-2">
+                        <div className="flex items-center border border-gray-300 rounded-lg shadow-sm overflow-hidden transition duration-150 focus-within:ring-2 focus-within:ring-[#387ED1] focus-within:ring-offset-2">
                             <div className="pl-3 py-3">
                                 <Lock className="w-5 h-5 text-gray-400" />
                             </div>
@@ -368,9 +363,8 @@ const ForgotPasswordPage = ({ onBackToLogin }) => {
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className={`w-full py-3.5 text-white font-bold rounded-lg transition duration-200 shadow-lg transform ${
-                            !isLoading ? 'hover:scale-[1.02] active:scale-[0.98]' : 'cursor-not-allowed opacity-70'
-                        } flex items-center justify-center`}
+                        className={`w-full py-3.5 text-white font-bold rounded-lg transition duration-200 shadow-lg transform ${!isLoading ? 'hover:scale-[1.02] active:scale-[0.98]' : 'cursor-not-allowed opacity-70'
+                            } flex items-center justify-center`}
                         style={buttonStyle}
                     >
                         {isLoading ? (
@@ -394,10 +388,10 @@ const ForgotPasswordPage = ({ onBackToLogin }) => {
                 </div>
             </div>
 
-            <button 
-                type="button" 
+            <button
+                type="button"
                 onClick={onBackToLogin}
-                className="w-full py-3 border-2 border-[#CC3D4B] text-[#CC3D4B] font-bold rounded-lg hover:bg-[#CC3D4B] hover:text-white transition duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center"
+                className="w-full py-3 border-2 border-[#387ED1] text-[#387ED1] font-bold rounded-lg hover:bg-[#387ED1] hover:text-white transition duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center"
             >
                 <ArrowLeft className="w-5 h-5 mr-2" />
                 Back to Login

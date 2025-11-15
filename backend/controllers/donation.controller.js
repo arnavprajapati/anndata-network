@@ -23,7 +23,6 @@ export const createDonation = async (req, res) => {
 
         const { foodType, quantity, expiresInHours, location } = req.body;
 
-        // Enhanced validation
         if (!foodType || !quantity || !expiresInHours || !location?.lat || !location?.lng) {
             return res.status(400).json({ 
                 message: "Missing required fields",
@@ -216,7 +215,6 @@ export const acceptDonation = async (req, res) => {
 };
 
 
-// UPDATE NGO LIVE LOCATION (Real-time Tracking)
 
 export const updateNgoLocation = async (req, res) => {
     try {
@@ -236,7 +234,6 @@ export const updateNgoLocation = async (req, res) => {
             return res.status(404).json({ message: "Donation not found" });
         }
 
-        // Only the NGO who accepted can update tracking
         if (donation.acceptedBy?.toString() !== req.user._id.toString()) {
             return res.status(403).json({ message: "Not authorized to update this donation" });
         }
@@ -258,7 +255,6 @@ export const updateNgoLocation = async (req, res) => {
             { new: true }
         ).populate("donorId", "name email location");
 
-        // Calculate distance to donor
         let distance = null;
         if (updatedDonation.location?.lat && updatedDonation.location?.lng) {
             distance = calculateDistance(
@@ -281,7 +277,6 @@ export const updateNgoLocation = async (req, res) => {
 };
 
 
-// MARK DONATION AS PICKED (NGO Only)
 
 export const markDonationPicked = async (req, res) => {
     try {
@@ -328,7 +323,6 @@ export const markDonationPicked = async (req, res) => {
 };
 
 
-// MARK DONATION AS COMPLETED (NGO Only)
 
 export const markDonationCompleted = async (req, res) => {
     try {
@@ -370,7 +364,6 @@ export const markDonationCompleted = async (req, res) => {
 };
 
 
-// GET SINGLE DONATION DETAILS (For Tracking)
 
 export const getDonationDetails = async (req, res) => {
     try {
@@ -382,7 +375,6 @@ export const getDonationDetails = async (req, res) => {
             return res.status(404).json({ message: "Donation not found" });
         }
 
-        // Check authorization - only donor or accepted NGO can view
         const isAuthorized = 
             req.user._id.toString() === donation.donorId._id.toString() ||
             (donation.acceptedBy && req.user._id.toString() === donation.acceptedBy._id.toString());
@@ -391,7 +383,6 @@ export const getDonationDetails = async (req, res) => {
             return res.status(403).json({ message: "Not authorized to view this donation" });
         }
 
-        // Calculate distance if NGO is on the way
         let distance = null;
         if (donation.ngoLocation?.lat && donation.location?.lat) {
             distance = calculateDistance(
@@ -414,7 +405,6 @@ export const getDonationDetails = async (req, res) => {
 };
 
 
-// CANCEL DONATION (Donor Only - Only if pending)
 
 export const cancelDonation = async (req, res) => {
     try {
