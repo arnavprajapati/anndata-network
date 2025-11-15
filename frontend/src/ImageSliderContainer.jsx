@@ -7,11 +7,10 @@ function ImagePagination({ currentSlideIndex, onDotClick, totalSlides }) {
                 <button
                     key={index}
                     onClick={() => onDotClick(index)}
-                    className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                        index === currentSlideIndex 
-                            ? 'bg-red-500 w-8' 
-                            : 'bg-gray-400 hover:bg-gray-300'
-                    }`}
+                    className={`w-3 h-3 rounded-full transition-all duration-300 ${index === currentSlideIndex
+                        ? 'bg-red-500 w-8'
+                        : 'bg-gray-400 hover:bg-gray-300'
+                        }`}
                     aria-label={`Go to slide ${index + 1}`}
                 />
             ))}
@@ -25,19 +24,19 @@ function ImageSliderContainer() {
     const sliderData = [
         {
             imageUrl: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=1200&h=600&fit=crop",
-            heading: "Help Ashok Deshmane give orphans of farmer suicides a loving home",
+            heading: "Turn surplus food into hope — connect with NGOs instantly.",
             buttonText: "Donate now",
             buttonLink: "#"
         },
         {
             imageUrl: "https://images.unsplash.com/photo-1469571486292-0ba58a3f068b?w=1200&h=600&fit=crop",
-            heading: "Support our mission to rescue children from trafficking and terrors in red light areas",
+            heading: "Share what you have. Track where it goes. Help who needs it.",
             buttonText: "Donate now",
             buttonLink: "#"
         },
         {
             imageUrl: "https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=1200&h=600&fit=crop",
-            heading: "Another great cause needs your help today to build a better future",
+            heading: "AnnData ensures no meal goes to waste — ever again.",
             buttonText: "Learn More",
             buttonLink: "#"
         },
@@ -68,7 +67,7 @@ function ImageSliderContainer() {
         <div className="w-full py-[10%] bg-gray-100">
             <div className="relative w-full max-w-7xl mx-auto px-4">
                 <div className="relative h-[400px] sm:h-[500px] flex items-center justify-center overflow-visible">
-                    
+
                     {/* Previous Slide (Left) */}
                     <div className="absolute left-0 w-[15%] h-[85%] opacity-40 transition-all duration-500 hidden lg:block">
                         <img
