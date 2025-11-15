@@ -40,7 +40,7 @@ const LogInPage = ({ onSwitchToSignup, onAuthSuccess }) => {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
-                    'Content-Type': 'lication/json',
+                    'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
                     email: formData.email,
