@@ -4,7 +4,7 @@ import { CheckCircle, XCircle } from 'lucide-react';
 export const PRIMARY_RED = '#387ED1';
 export const DARK_CHARCOAL = '#333333'
 
-export const API_BASE_URL = import.meta.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+export const API_BASE_URL = import.meta.env.REACT_APP_API_BASE_URL 
 
 
 export const FormInput = ({ id, label, type = 'text', icon: Icon, value, onChange, required = false }) => (
