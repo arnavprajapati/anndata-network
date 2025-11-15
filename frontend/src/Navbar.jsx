@@ -44,7 +44,8 @@ function Navbar({ onLoginClick, isLoggedIn, onLogout, userRole, userName }) {
                             <Activity className="w-4 h-4 text-white absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" strokeWidth={3} />
                         </div>
                         <span className="text-3xl font-extrabold text-[#333333] group-hover:text-[#387ED1] transition-colors duration-300">
-                            AnnData
+                            Annदाता
+
                         </span>
                     </Link>
 

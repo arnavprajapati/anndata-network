@@ -24,7 +24,7 @@ function ImageSliderContainer() {
     const sliderData = [
         {
             imageUrl: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=1200&h=600&fit=crop",
-            heading: "Turn surplus food into hope — connect with NGOs instantly.",
+            heading: "Annदाता  ensures no meal goes to waste — ever again.",
             buttonText: "Donate now",
             buttonLink: "#"
         },
@@ -36,7 +36,7 @@ function ImageSliderContainer() {
         },
         {
             imageUrl: "https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=1200&h=600&fit=crop",
-            heading: "AnnData ensures no meal goes to waste — ever again.",
+            heading: "Turn surplus food into hope — connect with NGOs instantly.",
             buttonText: "Learn More",
             buttonLink: "#"
         },
