@@ -4,13 +4,14 @@ import { CheckCircle, XCircle } from 'lucide-react';
 export const PRIMARY_RED = '#CC3D4B'; 
 export const DARK_CHARCOAL = '#333333'
 
+export const API_BASE_URL = 'http://localhost:5000';
+
 
 export const FormInput = ({ id, label, type = 'text', icon: Icon, value, onChange, required = false }) => (
     <div className="relative mb-6">
         <div 
             className={`
                 flex items-center border border-gray-300 rounded-lg shadow-sm overflow-hidden 
-                // Removed dynamic ring color class and will apply it via style on focus within
                 transition duration-150 group
             `}
             style={{ 

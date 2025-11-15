@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
-import { User, Mail, Lock, MapPin, Activity, HelpCircle, Key, ArrowLeft, ArrowRight } from 'lucide-react';
-import { FormInput, MessageDisplay, PRIMARY_RED, DARK_CHARCOAL } from './Shared';
+import { User, Mail, Lock, MapPin, Activity, HelpCircle, Key, ArrowLeft, ArrowRight, Eye, EyeOff, Loader, CheckCircle } from 'lucide-react';
+import { FormInput, MessageDisplay, PRIMARY_RED, DARK_CHARCOAL, API_BASE_URL } from './Shared';
 
-const API_BASE_URL = 'http://localhost:5000';
-
-const SignupPage = ({ onSwitchToLogin }) => {
+const SignupPage = ({ onSwitchToLogin, onSignupSuccess }) => {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -16,15 +14,16 @@ const SignupPage = ({ onSwitchToLogin }) => {
     });
     const [message, setMessage] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [step, setStep] = useState(1); // New state for multi-step form
+    const [step, setStep] = useState(1);
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleChange = (e) => {
         const { id, value, name, type, checked } = e.target;
-        // Use name for radio buttons, id for FormInput
         const inputName = name || id; 
         const newValue = type === 'radio' ? (checked ? value : formData[inputName]) : value;
 
         setFormData(prev => ({ ...prev, [inputName]: newValue }));
+        setMessage(null);
     };
     
     const securityQuestions = [
@@ -33,17 +32,13 @@ const SignupPage = ({ onSwitchToLogin }) => {
         "What city were you born in?",
         "What is your favorite book?",
         "What is the name of your elementary school?",
-        "What is the name of the street you grew up on?",
-        "What is your favorite food?",
-        "What is the model of your first car?",
     ];
 
     const nextStep = () => {
-        // Basic validation before moving to the next step
         setMessage(null);
         if (step === 1) {
-            if (!formData.name) {
-                setMessage({ type: 'error', text: 'Full Name is required.' });
+            if (!formData.name || !formData.role) {
+                setMessage({ type: 'error', text: 'Name and role are required.' });
                 return;
             }
             setStep(2);
@@ -61,15 +56,19 @@ const SignupPage = ({ onSwitchToLogin }) => {
         setMessage(null);
     };
 
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setMessage(null);
         setIsLoading(true);
 
-        // Final validation for Step 3
         if (step === 3 && (!formData.email || !formData.password)) {
-            setMessage({ type: 'error', text: 'Email and password are required for sign up.' });
+            setMessage({ type: 'error', text: 'Email and password are required.' });
+            setIsLoading(false);
+            return;
+        }
+
+        if (formData.password.length < 6) {
+            setMessage({ type: 'error', text: 'Password must be at least 6 characters.' });
             setIsLoading(false);
             return;
         }
@@ -79,7 +78,7 @@ const SignupPage = ({ onSwitchToLogin }) => {
             email: formData.email, 
             password: formData.password, 
             role: formData.role, 
-            locationText: formData.locationText, // Included locationText in payload
+            locationText: formData.locationText,
             securityQuestion: formData.securityQuestion,
             securityAnswer: formData.securityAnswer,
         };
@@ -90,64 +89,68 @@ const SignupPage = ({ onSwitchToLogin }) => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                credentials: 'include',  
                 body: JSON.stringify(payload),
             });
 
             const data = await response.json();
 
             if (response.ok) {
-                console.log('Registration successful. Token received:', data.token);
                 setMessage({ 
                     type: 'success', 
-                    text: `Account created successfully! Welcome, ${formData.name}. Please log in.` 
+                    text: `Account created! Welcome, ${formData.name}!` 
                 });
-                setFormData(prev => ({ 
-                    ...prev, 
-                    password: '', 
-                    securityAnswer: '' 
-                }));
-                // Go back to step 1 before switching to login for a clean state
-                setStep(1); 
-                onSwitchToLogin(); 
+                
+                // Auto-login after signup
+                if (onSignupSuccess) {
+                    onSignupSuccess({
+                        token: data.token,
+                        user: data.user
+                    });
+                }
 
             } else {
                 setMessage({ 
                     type: 'error', 
-                    text: data.message || 'Registration failed. Please check the details.' 
+                    text: data.message || 'Registration failed.' 
                 });
-                setIsLoading(false); // Make sure to turn off loading on error
             }
         } catch (error) {
             console.error('Network Error:', error);
-            setMessage({ type: 'error', text: 'A network error occurred. Please try again later.' });
+            setMessage({ type: 'error', text: 'Network error occurred.' });
         } finally {
             setIsLoading(false);
         }
     };
 
     const buttonStyle = { backgroundColor: PRIMARY_RED };
-    const hoverStyle = { backgroundColor: '#a9303c' };
     
-    // Helper component to render the step indicator
+    // Step Indicator Component
     const StepIndicator = ({ currentStep }) => (
         <div className="flex justify-between items-center mb-10">
             {[1, 2, 3].map((s) => (
                 <React.Fragment key={s}>
                     <div className="flex flex-col items-center">
                         <div 
-                            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white transition-all duration-300 ${
-                                s <= currentStep ? 'bg-[#CC3D4B] shadow-md' : 'bg-gray-300'
+                            className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300 ${
+                                s < currentStep 
+                                    ? 'bg-green-500 text-white' 
+                                    : s === currentStep 
+                                    ? 'bg-[#CC3D4B] text-white shadow-lg scale-110' 
+                                    : 'bg-gray-200 text-gray-500'
                             }`}
                         >
-                            {s}
+                            {s < currentStep ? <CheckCircle className="w-6 h-6" /> : s}
                         </div>
-                        <p className={`mt-2 text-xs font-medium text-center transition-colors duration-300 ${s === currentStep ? 'text-[#CC3D4B]' : 'text-gray-500'}`}>
-                            {s === 1 ? 'Personal Info' : s === 2 ? 'Security' : 'Credentials'}
+                        <p className={`mt-2 text-xs font-medium text-center transition-colors duration-300 ${
+                            s === currentStep ? 'text-[#CC3D4B] font-bold' : 'text-gray-500'
+                        }`}>
+                            {s === 1 ? 'Personal' : s === 2 ? 'Security' : 'Credentials'}
                         </p>
                     </div>
                     {s < 3 && (
-                        <div className={`flex-1 h-1 mx-2 transition-all duration-300 ${s < currentStep ? 'bg-[#CC3D4B]' : 'bg-gray-300'}`}></div>
+                        <div className={`flex-1 h-1 mx-2 transition-all duration-300 rounded ${
+                            s < currentStep ? 'bg-green-500' : 'bg-gray-200'
+                        }`}></div>
                     )}
                 </React.Fragment>
             ))}
@@ -155,20 +158,23 @@ const SignupPage = ({ onSwitchToLogin }) => {
     );
 
     return (
-        <>
-            <h2 className="text-3xl font-bold text-center mb-4" style={{ color: DARK_CHARCOAL }}>Create Account</h2>
-            <p className="text-center text-sm text-gray-500 mb-8">Step {step} of 3</p>
+        <div className="animate-fadeIn">
+            <div className="text-center mb-6">
+                <h2 className="text-3xl font-extrabold mb-2" style={{ color: DARK_CHARCOAL }}>
+                    Create Your Account
+                </h2>
+                <p className="text-gray-500 text-sm">
+                    Join us in making a difference
+                </p>
+            </div>
 
             <StepIndicator currentStep={step} />
 
-            {message && (
-                <MessageDisplay message={message} />
-            )}
+            {message && <MessageDisplay message={message} />}
 
             <form onSubmit={handleSubmit}>
-                {/* --- Step 1: Personal Info & Role --- */}
                 {step === 1 && (
-                    <div className="space-y-6">
+                    <div className="space-y-6 animate-fadeIn">
                         <FormInput 
                             id="name" 
                             label="Full Name" 
@@ -178,67 +184,74 @@ const SignupPage = ({ onSwitchToLogin }) => {
                             required 
                         />
                         
-                        <div className="relative p-3 bg-gray-50 rounded-lg border border-gray-200">
-                            <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                                <Activity className="w-4 h-4 mr-2" style={{ color: PRIMARY_RED }}/>
-                                Select your role
+                        <div className="relative p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border-2 border-gray-200">
+                            <label className="block text-sm font-semibold text-gray-800 mb-4 flex items-center">
+                                <Activity className="w-5 h-5 mr-2" style={{ color: PRIMARY_RED }}/>
+                                I am a...
                             </label>
-                            <div className="flex space-x-6">
-                                <label className="flex items-center cursor-pointer">
+                            <div className="grid grid-cols-2 gap-4">
+                                <label className={`flex flex-col items-center cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 ${
+                                    formData.role === 'donor' 
+                                        ? 'border-[#CC3D4B] bg-white shadow-lg scale-105' 
+                                        : 'border-gray-300 hover:border-gray-400'
+                                }`}>
                                     <input
                                         type="radio"
                                         name="role"
                                         value="donor"
                                         checked={formData.role === 'donor'}
                                         onChange={handleChange}
-                                        className="form-radio h-4 w-4"
-                                        style={{ accentColor: PRIMARY_RED }}
+                                        className="sr-only"
                                     />
-                                    <span className="ml-2 text-sm text-gray-700 font-medium">Donor</span>
+                                    <User className={`w-8 h-8 mb-2 ${formData.role === 'donor' ? 'text-[#CC3D4B]' : 'text-gray-400'}`} />
+                                    <span className={`text-sm font-bold ${formData.role === 'donor' ? 'text-[#CC3D4B]' : 'text-gray-600'}`}>
+                                        Donor
+                                    </span>
                                 </label>
-                                <label className="flex items-center cursor-pointer">
+                                <label className={`flex flex-col items-center cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 ${
+                                    formData.role === 'ngo' 
+                                        ? 'border-[#CC3D4B] bg-white shadow-lg scale-105' 
+                                        : 'border-gray-300 hover:border-gray-400'
+                                }`}>
                                     <input
                                         type="radio"
                                         name="role"
                                         value="ngo"
                                         checked={formData.role === 'ngo'}
                                         onChange={handleChange}
-                                        className="form-radio h-4 w-4"
-                                        style={{ accentColor: PRIMARY_RED }}
+                                        className="sr-only"
                                     />
-                                    <span className="ml-2 text-sm text-gray-700 font-medium">NGO/Charity</span>
+                                    <Activity className={`w-8 h-8 mb-2 ${formData.role === 'ngo' ? 'text-[#CC3D4B]' : 'text-gray-400'}`} />
+                                    <span className={`text-sm font-bold ${formData.role === 'ngo' ? 'text-[#CC3D4B]' : 'text-gray-600'}`}>
+                                        NGO
+                                    </span>
                                 </label>
                             </div>
                         </div>
 
                         <FormInput 
                             id="locationText" 
-                            label="Location (City, State, or Org Address)" 
+                            label="Location (City, State)" 
                             icon={MapPin} 
                             value={formData.locationText} 
                             onChange={handleChange} 
                         />
 
-                        <div className="flex justify-end">
-                            <button
-                                type="button"
-                                onClick={nextStep}
-                                className="flex items-center py-3 px-6 text-white font-bold rounded-lg transition duration-200 shadow-md transform hover:scale-[1.01] active:scale-[0.99]"
-                                style={buttonStyle}
-                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = hoverStyle.backgroundColor)}
-                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = buttonStyle.backgroundColor)}
-                            >
-                                Next <ArrowRight className="w-5 h-5 ml-2" />
-                            </button>
-                        </div>
+                        <button
+                            type="button"
+                            onClick={nextStep}
+                            className="w-full flex items-center justify-center py-3.5 text-white font-bold rounded-lg transition duration-200 shadow-lg transform hover:scale-[1.02] active:scale-[0.98]"
+                            style={buttonStyle}
+                        >
+                            Next <ArrowRight className="w-5 h-5 ml-2" />
+                        </button>
                     </div>
                 )}
                 
-                {/* --- Step 2: Security & Recovery --- */}
                 {step === 2 && (
-                    <div className="space-y-6">
+                    <div className="space-y-6 animate-fadeIn">
                         <div className="mb-4">
-                            <label htmlFor="securityQuestion" className="block text-sm font-medium text-gray-700 mb-1">
+                            <label htmlFor="securityQuestion" className="block text-sm font-semibold text-gray-700 mb-2">
                                 <HelpCircle className="w-4 h-4 mr-2 inline" style={{ color: PRIMARY_RED }}/>
                                 Security Question
                             </label>
@@ -249,19 +262,18 @@ const SignupPage = ({ onSwitchToLogin }) => {
                                     value={formData.securityQuestion}
                                     onChange={handleChange}
                                     required
-                                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CC3D4B] focus:border-[#CC3D4B] transition duration-150 text-gray-700 appearance-none text-sm font-medium"
+                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CC3D4B] focus:border-[#CC3D4B] transition duration-150 text-gray-700 font-medium"
                                 >
                                     {securityQuestions.map((q) => (
                                         <option key={q} value={q}>{q}</option>
                                     ))}
                                 </select>
-                                <HelpCircle className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                             </div>
                         </div>
 
                         <FormInput 
                             id="securityAnswer" 
-                            label="Answer to Security Question" 
+                            label="Your Answer" 
                             type="text" 
                             icon={Key} 
                             value={formData.securityAnswer} 
@@ -269,21 +281,19 @@ const SignupPage = ({ onSwitchToLogin }) => {
                             required 
                         />
 
-                        <div className="flex justify-between mt-8">
+                        <div className="flex gap-3">
                             <button
                                 type="button"
                                 onClick={prevStep}
-                                className="flex items-center py-3 px-6 text-gray-700 font-bold rounded-lg transition duration-200 shadow-md border border-gray-300 transform hover:bg-gray-100 active:scale-[0.99]"
+                                className="flex-1 flex items-center justify-center py-3.5 text-gray-700 font-bold rounded-lg transition duration-200 shadow-md border-2 border-gray-300 hover:bg-gray-50"
                             >
-                                <ArrowLeft className="w-5 h-5 mr-2" /> Previous
+                                <ArrowLeft className="w-5 h-5 mr-2" /> Back
                             </button>
                             <button
                                 type="button"
                                 onClick={nextStep}
-                                className="flex items-center py-3 px-6 text-white font-bold rounded-lg transition duration-200 shadow-md transform hover:scale-[1.01] active:scale-[0.99]"
+                                className="flex-1 flex items-center justify-center py-3.5 text-white font-bold rounded-lg transition duration-200 shadow-lg transform hover:scale-[1.02]"
                                 style={buttonStyle}
-                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = hoverStyle.backgroundColor)}
-                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = buttonStyle.backgroundColor)}
                             >
                                 Next <ArrowRight className="w-5 h-5 ml-2" />
                             </button>
@@ -291,78 +301,90 @@ const SignupPage = ({ onSwitchToLogin }) => {
                     </div>
                 )}
 
-                {/* --- Step 3: Account Credentials --- */}
                 {step === 3 && (
-                    <div className="space-y-6">
+                    <div className="space-y-6 animate-fadeIn">
                         <FormInput 
                             id="email" 
                             label="Email Address" 
                             type="email" 
-                            name="email"
                             icon={Mail} 
                             value={formData.email} 
                             onChange={handleChange} 
                             required 
                         />
-                        <FormInput 
-                            id="password" 
-                            label="Password" 
-                            type="password"
-                            name="password" 
-                            icon={Lock} 
-                            value={formData.password} 
-                            onChange={handleChange} 
-                            required 
-                        />
+                        
+                        <div className="relative mb-6">
+                            <div className="flex items-center border border-gray-300 rounded-lg shadow-sm overflow-hidden transition duration-150 focus-within:ring-2 focus-within:ring-[#CC3D4B] focus-within:ring-offset-2">
+                                <div className="pl-3 py-3">
+                                    <Lock className="w-5 h-5 text-gray-400" />
+                                </div>
+                                <input
+                                    id="password"
+                                    type={showPassword ? "text" : "password"}
+                                    placeholder="Password (min 6 characters)"
+                                    value={formData.password}
+                                    onChange={handleChange}
+                                    required
+                                    className="w-full p-3 focus:outline-none placeholder-gray-500 text-sm font-medium"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="pr-3 py-3 text-gray-400 hover:text-gray-600 transition"
+                                >
+                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                </button>
+                            </div>
+                        </div>
 
-                        <div className="flex justify-between mt-8">
+                        <div className="flex gap-3">
                             <button
                                 type="button"
                                 onClick={prevStep}
-                                className="flex items-center py-3 px-6 text-gray-700 font-bold rounded-lg transition duration-200 shadow-md border border-gray-300 transform hover:bg-gray-100 active:scale-[0.99]"
+                                className="flex-1 flex items-center justify-center py-3.5 text-gray-700 font-bold rounded-lg transition duration-200 shadow-md border-2 border-gray-300 hover:bg-gray-50"
                             >
-                                <ArrowLeft className="w-5 h-5 mr-2" /> Previous
+                                <ArrowLeft className="w-5 h-5 mr-2" /> Back
                             </button>
 
                             <button
                                 type="submit"
                                 disabled={isLoading}
-                                className={`
-                                    flex items-center justify-center py-3 px-6 text-white font-bold rounded-lg transition duration-200 shadow-md 
-                                    transform ${!isLoading ? 'hover:scale-[1.01] active:scale-[0.99]' : ''}
-                                    ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}
-                                `}
+                                className={`flex-1 flex items-center justify-center py-3.5 text-white font-bold rounded-lg transition duration-200 shadow-lg transform ${
+                                    !isLoading ? 'hover:scale-[1.02] active:scale-[0.98]' : 'cursor-not-allowed opacity-70'
+                                }`}
                                 style={buttonStyle}
-                                onMouseEnter={(e) => !isLoading && (e.currentTarget.style.backgroundColor = hoverStyle.backgroundColor)}
-                                onMouseLeave={(e) => !isLoading && (e.currentTarget.style.backgroundColor = buttonStyle.backgroundColor)}
                             >
                                 {isLoading ? (
-                                    <div className="flex items-center justify-center">
-                                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        Creating Account...
-                                    </div>
-                                ) : 'Create Account'}
+                                    <>
+                                        <Loader className="animate-spin mr-2 h-5 w-5" />
+                                        Creating...
+                                    </>
+                                ) : (
+                                    'Create Account'
+                                )}
                             </button>
                         </div>
                     </div>
                 )}
             </form>
             
-            <p className="mt-8 text-center text-sm text-gray-600">
-                Already have an account? 
-                <button 
-                    type="button" 
-                    onClick={onSwitchToLogin}
-                    className="font-extrabold ml-1 hover:underline transition duration-150 focus:outline-none"
-                    style={{ color: PRIMARY_RED }}
-                >
-                    Log In
-                </button>
-            </p>
-        </>
+            <div className="relative my-8">
+                <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                    <span className="px-4 bg-white text-gray-500">Already have an account?</span>
+                </div>
+            </div>
+
+            <button 
+                type="button" 
+                onClick={onSwitchToLogin}
+                className="w-full py-3 border-2 border-[#CC3D4B] text-[#CC3D4B] font-bold rounded-lg hover:bg-[#CC3D4B] hover:text-white transition duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+            >
+                Log In Instead
+            </button>
+        </div>
     );
 };
 

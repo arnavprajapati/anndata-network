@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
-import { Mail, Lock } from 'lucide-react';
-import { FormInput, MessageDisplay, PRIMARY_RED, DARK_CHARCOAL } from './Shared';
+import { Mail, Lock, Eye, EyeOff, Loader } from 'lucide-react';
+import { FormInput, MessageDisplay, PRIMARY_RED, DARK_CHARCOAL, API_BASE_URL } from './Shared';
+import ForgotPasswordPage from './ForgotPasswordPage';
 
-// IMPORTANT: Replace this with your actual backend URL (e.g., http://localhost:5000)
-const API_BASE_URL = 'http://localhost:5000'; 
-
-// Renamed onLoginSuccess to onAuthSuccess
 const LogInPage = ({ onSwitchToSignup, onAuthSuccess }) => {
     const [formData, setFormData] = useState({
         email: '',
@@ -13,10 +10,18 @@ const LogInPage = ({ onSwitchToSignup, onAuthSuccess }) => {
     });
     const [message, setMessage] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showForgotPassword, setShowForgotPassword] = useState(false);
+
+    // If forgot password is active, render that component
+    if (showForgotPassword) {
+        return <ForgotPasswordPage onBackToLogin={() => setShowForgotPassword(false)} />;
+    }
 
     const handleChange = (e) => {
         const { id, value } = e.target;
         setFormData(prev => ({ ...prev, [id]: value }));
+        setMessage(null); // Clear message on input change
     };
 
     const handleSubmit = async (e) => {
@@ -25,7 +30,7 @@ const LogInPage = ({ onSwitchToSignup, onAuthSuccess }) => {
         setIsLoading(true);
 
         if (!formData.email || !formData.password) {
-            setMessage({ type: 'error', text: 'Email and password are required for login.' });
+            setMessage({ type: 'error', text: 'Email and password are required.' });
             setIsLoading(false);
             return;
         }
@@ -49,19 +54,16 @@ const LogInPage = ({ onSwitchToSignup, onAuthSuccess }) => {
                 if (onAuthSuccess) {
                     onAuthSuccess({ 
                         token: data.token, 
-                        // Mock user data with default role for simulation
-                        user: data.user || { name: 'Donor', role: 'donor' } 
+                        user: data.user
                     });
                 }
                 
                 setMessage({ 
                     type: 'success', 
-                    text: `Login successful! Welcome back, ${data.user.name || formData.email}.` 
+                    text: `Welcome back, ${data.user.name}!` 
                 });
-                setFormData(prev => ({ ...prev, password: '' }));
 
             } else {
-                // Handle 400, 401, 404 errors from the backend
                 setMessage({ 
                     type: 'error', 
                     text: data.message || 'Login failed. Please check your credentials.' 
@@ -69,54 +71,71 @@ const LogInPage = ({ onSwitchToSignup, onAuthSuccess }) => {
             }
         } catch (error) {
             console.error('Network Error:', error);
-            setMessage({ type: 'error', text: 'A network error occurred. Please try again later.' });
+            setMessage({ type: 'error', text: 'Network error occurred. Please try again.' });
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleForgotPassword = () => {
-        // ... (unchanged)
-        console.log('Forgot Password clicked. Implement redirection or modal logic here.');
-        setMessage({ type: 'error', text: 'Password reset feature is under development. Please contact support.' });
-    };
-
     const buttonStyle = { backgroundColor: PRIMARY_RED };
-    const hoverStyle = { backgroundColor: '#a9303c' };
 
     return (
-        <>
-            <h2 className="text-3xl font-bold text-center mb-8" style={{ color: DARK_CHARCOAL }}>Log In</h2>
+        <div className="animate-fadeIn">
+            <div className="text-center mb-8">
+                <h2 className="text-3xl font-extrabold mb-2" style={{ color: DARK_CHARCOAL }}>
+                    Welcome Back
+                </h2>
+                <p className="text-gray-500 text-sm font-semibold">
+                    Log in to continue making a difference
+                </p>
+            </div>
 
-            {message && (
-                <MessageDisplay message={message} />
-            )}
+            {message && <MessageDisplay message={message} />}
 
-            <form onSubmit={handleSubmit}>
-                <FormInput 
-                    id="email" 
-                    label="Email Address" 
-                    type="email" 
-                    icon={Mail} 
-                    value={formData.email} 
-                    onChange={handleChange} 
-                    required 
-                />
-                <FormInput 
-                    id="password" 
-                    label="Password" 
-                    type="password" 
-                    icon={Lock} 
-                    value={formData.password} 
-                    onChange={handleChange} 
-                    required 
-                />
+            <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="relative">
+                    <FormInput 
+                        id="email" 
+                        label="Email Address" 
+                        type="email" 
+                        icon={Mail} 
+                        value={formData.email} 
+                        onChange={handleChange} 
+                        required 
+                    />
+                </div>
+
+                <div className="relative">
+                    <div className="relative mb-6">
+                        <div className="flex items-center border border-gray-300 rounded-lg shadow-sm overflow-hidden transition duration-150 focus-within:ring-2 focus-within:ring-[#CC3D4B] focus-within:ring-offset-2">
+                            <div className="pl-3 py-3">
+                                <Lock className="w-5 h-5 text-gray-400" />
+                            </div>
+                            <input
+                                id="password"
+                                type={showPassword ? "text" : "password"}
+                                placeholder="Password"
+                                value={formData.password}
+                                onChange={handleChange}
+                                required
+                                className="w-full p-3 focus:outline-none placeholder-gray-500 text-sm font-medium"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="pr-3 py-3 text-gray-400 hover:text-gray-600 transition"
+                            >
+                                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
                 <div className="text-right -mt-4 mb-6">
                     <button 
-                        type="button" 
-                        onClick={handleForgotPassword}
-                        className="text-sm font-semibold hover:underline transition duration-150 focus:outline-none"
+                        type="button"
+                        onClick={() => setShowForgotPassword(true)}
+                        className="text-sm font-semibold hover:underline transition duration-150"
                         style={{ color: PRIMARY_RED }}
                     >
                         Forgot Password?
@@ -127,38 +146,40 @@ const LogInPage = ({ onSwitchToSignup, onAuthSuccess }) => {
                     type="submit"
                     disabled={isLoading}
                     className={`
-                        w-full py-3 mt-6 text-white font-bold rounded-lg transition duration-200 shadow-md 
-                        transform ${!isLoading ? 'hover:scale-[1.01] active:scale-[0.99]' : ''}
-                        ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}
+                        w-full py-3.5 text-white font-bold rounded-lg transition duration-200 shadow-lg 
+                        transform ${!isLoading ? 'hover:scale-[1.02] active:scale-[0.98] hover:shadow-xl' : 'cursor-not-allowed opacity-70'}
+                        flex items-center justify-center
                     `}
                     style={buttonStyle}
-                    onMouseEnter={(e) => !isLoading && (e.currentTarget.style.backgroundColor = hoverStyle.backgroundColor)}
-                    onMouseLeave={(e) => !isLoading && (e.currentTarget.style.backgroundColor = buttonStyle.backgroundColor)}
                 >
                     {isLoading ? (
-                        <div className="flex items-center justify-center">
-                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
+                        <>
+                            <Loader className="animate-spin mr-2 h-5 w-5" />
                             Logging In...
-                        </div>
-                    ) : 'Log In'}
+                        </>
+                    ) : (
+                        'Log In'
+                    )}
                 </button>
             </form>
             
-            <p className="mt-8 text-center text-sm text-gray-600">
-                Don't have an account? 
-                <button 
-                    type="button" 
-                    onClick={onSwitchToSignup}
-                    className="font-extrabold ml-1 hover:underline transition duration-150 focus:outline-none"
-                    style={{ color: PRIMARY_RED }}
-                >
-                    Sign Up
-                </button>
-            </p>
-        </>
+            <div className="relative my-8">
+                <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                    <span className="px-4 font-semibold bg-white text-gray-500">Don't have an account?</span>
+                </div>
+            </div>
+
+            <button 
+                type="button" 
+                onClick={onSwitchToSignup}
+                className="w-full py-3 border-2 border-[#CC3D4B] text-[#CC3D4B] font-bold rounded-lg hover:bg-[#CC3D4B] hover:text-white transition duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+            >
+                Create New Account
+            </button>
+        </div>
     );
 };
 

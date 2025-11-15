@@ -1,295 +1,413 @@
-import React, { useState, useEffect } from 'react';
-import { LogOut, PlusCircle, Compass, MapPin, User, Clock, Package, CheckCircle, Truck, RefreshCw } from 'lucide-react';
-import { FormInput, PRIMARY_RED, DARK_CHARCOAL, MessageDisplay } from './Shared';
+import React, { useState, useEffect, useCallback } from 'react';
+import { PlusCircle, Compass, MapPin, User, Clock, Package, CheckCircle, Truck, RefreshCw, Activity, TrendingUp, Award, Heart } from 'lucide-react';
+import { FormInput, PRIMARY_RED, DARK_CHARCOAL, MessageDisplay, API_BASE_URL } from './Shared';
+import DonationTrackingMap from './DonationTrackingMap';
 
-// --- DUMMY DATA & MOCK API FUNCTIONS ---
-const MOCK_DONATIONS_DATA = [
-    {
-        id: 101,
-        foodType: 'Rice',
-        quantity: 15,
-        expiresInHours: 3,
-        location: '123 Main St, New Delhi',
-        status: 'pending',
-        createdAt: new Date(Date.now() - 3600000), // 1 hour ago
-        ngoName: null,
-        ngoLocation: null,
-    },
-    {
-        id: 102,
-        foodType: 'Bread & Pastries',
-        quantity: 50,
-        expiresInHours: 1,
-        location: '45B Sector 18, Gurgaon',
-        status: 'accepted',
-        createdAt: new Date(Date.now() - 7200000), // 2 hours ago
-        ngoName: 'Feeding Hands NGO',
-        ngoLocation: { lat: 28.5355, lng: 77.3910 }, // Example coordinates for Noida
-    },
-    {
-        id: 103,
-        foodType: 'Canned Vegetables',
-        quantity: 20,
-        expiresInHours: 48,
-        location: 'Near Central Market, Noida',
-        status: 'picked',
-        createdAt: new Date(Date.now() - 86400000), // 1 day ago
-        ngoName: 'City Helpers Foundation',
-        ngoLocation: { lat: 28.5772, lng: 77.2600 }, // Example coordinates for East Delhi
-    },
-];
-
-const MOCK_CURRENT_USER = {
-    name: "Aman Sharma",
-    location: { lat: 28.6139, lng: 77.2090 }, // Example coordinates for Connaught Place, New Delhi
-    locationText: 'Central Market, Connaught Place, New Delhi',
-};
-
-// Mock function to simulate fetching donations
-const mockFetchDonations = () => {
-    return new Promise(resolve => {
-        setTimeout(() => {
-            // In a real app, this would be a fetch to /donations/my
-            resolve(MOCK_DONATIONS_DATA.map(d => ({
-                ...d,
-                // Simulate location update only for the accepted one
-                ngoLocation: d.status === 'onTheWay' || d.status === 'accepted' ? { lat: d.ngoLocation.lat + (Math.random() - 0.5) * 0.002, lng: d.ngoLocation.lng + (Math.random() - 0.5) * 0.002 } : d.ngoLocation
-            })));
-        }, 500);
-    });
-};
-
-// --- HELPER COMPONENTS ---
+const StatCard = ({ icon: Icon, title, value, subtitle, color, bgColor }) => (
+    <div
+        className={`${bgColor} border-l-4 rounded-lg p-6 shadow-md transition-all duration-300  cursor-pointer hover:shadow-lg`}
+        style={{ borderColor: color }}
+    >
+        <div className="flex items-center justify-between">
+            <div>
+                <p className="text-sm text-gray-600 font-semibold mb-1">{title}</p>
+                <h3 className="text-3xl font-extrabold" style={{ color: color }}>{value}</h3>
+                {subtitle && <p className="text-xs text-gray-500 font-semibold mt-1">{subtitle}</p>}
+            </div>
+            <div className="p-4 rounded-full" style={{ backgroundColor: `${color}20` }}>
+                <Icon className="w-8 h-8" style={{ color: color }} />
+            </div>
+        </div>
+    </div>
+);
 
 const StatusIcon = ({ status }) => {
     switch (status) {
-        case 'pending':
-            return <Clock className="w-5 h-5 text-yellow-500 mr-2 flex-shrink-0" />;
-        case 'accepted':
-            return <CheckCircle className="w-5 h-5 text-blue-500 mr-2 flex-shrink-0" />;
-        case 'onTheWay':
-            return <Truck className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" />;
-        case 'picked':
-            return <Package className="w-5 h-5 text-gray-500 mr-2 flex-shrink-0" />;
-        default:
-            return <Package className="w-5 h-5 text-gray-400 mr-2 flex-shrink-0" />;
+        case 'pending': return <Clock className="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0" />;
+        case 'accepted': return <CheckCircle className="w-5 h-5 text-blue-600 mr-2 flex-shrink-0" />;
+        case 'onTheWay': return <Truck className="w-5 h-5 text-green-600 mr-2 flex-shrink-0" />;
+        case 'picked': return <Package className="w-5 h-5 text-purple-600 mr-2 flex-shrink-0" />;
+        case 'completed': return <CheckCircle className="w-5 h-5 text-green-700 mr-2 flex-shrink-0" />;
+        default: return <Package className="w-5 h-5 text-gray-400 mr-2 flex-shrink-0" />;
     }
 };
 
 const DonationItem = ({ donation }) => {
-    const formattedTime = new Date(donation.createdAt).toLocaleTimeString();
+    const ngoName = donation.acceptedBy?.name;
+    const locationDisplay = donation.location?.text || `${donation.location?.lat?.toFixed(4)}, ${donation.location?.lng?.toFixed(4)}`;
+
+    const statusColors = {
+        pending: 'bg-yellow-50 border-yellow-200',
+        accepted: 'bg-blue-50 border-blue-200',
+        onTheWay: 'bg-green-50 border-green-200',
+        picked: 'bg-purple-50 border-purple-200',
+        completed: 'bg-green-100 border-green-300'
+    };
 
     return (
-        <div className="p-4 border-b border-gray-100 last:border-b-0 flex items-start space-x-3">
-            <StatusIcon status={donation.status} />
-            <div className="flex-1 min-w-0">
-                <p className="text-md font-semibold text-gray-800 truncate">Food: {donation.foodType}</p>
-                <div className="text-sm text-gray-500 mt-0.5 space-y-1">
-                    <p>Qty: {donation.quantity} units, Expires In: {donation.expiresInHours} hours</p>
-                    <p className="flex items-center">
-                        <MapPin className="w-3 h-3 mr-1" /> Location: {donation.location}
-                    </p>
-                    {donation.ngoName && (
-                        <p className="font-medium text-gray-700">Accepted By: <span className="text-[#CC3D4B]">{donation.ngoName}</span></p>
-                    )}
-                    <p className={`font-bold uppercase text-xs pt-1 ${donation.status === 'pending' ? 'text-yellow-600' :
-                            donation.status === 'accepted' ? 'text-blue-600' :
-                                donation.status === 'onTheWay' ? 'text-green-600' : 'text-gray-600'
-                        }`}>
-                        Status: {donation.status} (Created at {formattedTime})
-                    </p>
+        <div className={`p-4 border rounded-lg mb-3 ${statusColors[donation.status] || 'bg-gray-50 border-gray-200'} transition duration-200 hover:shadow-lg cursor-pointer`}>
+            <div className="flex items-start space-x-3">
+                <StatusIcon status={donation.status} />
+                <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start mb-2">
+                        <div>
+                            <p className="text-lg font-bold text-gray-800 font-semibold">{donation.foodType}</p>
+                            <p className="text-sm text-gray-600 font-semibold">Quantity: {donation.quantity} units</p>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase font-semibold ${donation.status === 'pending' ? 'bg-yellow-200 text-yellow-800' :
+                                donation.status === 'accepted' ? 'bg-blue-200 text-blue-800' :
+                                    donation.status === 'onTheWay' ? 'bg-green-200 text-green-800' :
+                                        donation.status === 'picked' ? 'bg-purple-200 text-purple-800' :
+                                            'bg-green-300 text-green-900'
+                            }`}>
+                            {donation.status}
+                        </span>
+                    </div>
+
+                    <div className="text-sm text-gray-600 space-y-1 font-semibold">
+                        <p className="flex items-center">
+                            <Clock className="w-4 h-4 mr-1" /> Expires in: {donation.expiresInHours} hours
+                        </p>
+                        <p className="flex items-center">
+                            <MapPin className="w-4 h-4 mr-1" /> {locationDisplay}
+                        </p>
+                        {ngoName && (
+                            <p className="flex items-center">
+                                <User className="w-4 h-4 mr-1" /> Accepted by: <span className="text-blue-600 ml-1">{ngoName}</span>
+                            </p>
+                        )}
+                        <p className="text-xs text-gray-500 font-semibold">
+                            Created: {new Date(donation.createdAt).toLocaleDateString()} at {new Date(donation.createdAt).toLocaleTimeString()}
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
     );
 };
 
-// --- LIVE TRACKING MAP COMPONENT ---
-const LiveTrackingMap = ({ donorLocation, ngoLocation }) => {
+const calculateDistance = (loc1, loc2) => {
+    if (!loc1 || !loc2 || loc1.lat === null || loc2.lat === null) return 'N/A';
+    const R = 6371;
+    const toRad = (value) => value * Math.PI / 180;
 
-    // Simple distance calculation (Haversine formula - simplified for illustration)
-    const R = 6371; // Radius of Earth in kilometers
-    const dLat = (ngoLocation.lat - donorLocation.lat) * (Math.PI / 180);
-    const dLon = (ngoLocation.lng - donorLocation.lng) * (Math.PI / 180);
+    const dLat = toRad(loc2.lat - loc1.lat);
+    const dLon = toRad(loc2.lng - loc1.lng);
+    const lat1 = toRad(loc1.lat);
+    const lat2 = toRad(loc2.lat);
+
     const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(donorLocation.lat * (Math.PI / 180)) * Math.cos(ngoLocation.lat * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distanceKm = R * c;
+    return (R * c).toFixed(2);
+};
 
-    // Mock ETA calculation (e.g., 20 km/h)
+const LiveTrackingSection = ({ donorLocation, ngoLocation }) => {
+    if (!donorLocation || !ngoLocation) return null;
+
+    const distanceKm = calculateDistance(donorLocation, ngoLocation);
     const mockSpeedKmh = 20;
     const etaMinutes = Math.round((distanceKm / mockSpeedKmh) * 60);
 
     return (
         <div className="p-6 bg-white rounded-xl shadow-lg border border-gray-100">
-            <h3 className="text-xl font-bold mb-4 flex items-center" style={{ color: DARK_CHARCOAL }}>
+            <h3 className="text-xl font-bold mb-4 flex items-center font-semibold" style={{ color: DARK_CHARCOAL }}>
                 <Compass className="w-5 h-5 mr-2 text-blue-500" /> Live Tracking
             </h3>
 
-            {/* Mock Map View */}
-            <div className="h-64 bg-gray-200 rounded-lg flex items-center justify-center relative overflow-hidden">
-                <div className="text-center">
-                    <p className="text-gray-600 font-bold mb-2">Map View Placeholder</p>
-                    <div className="flex justify-center space-x-8">
-                        <div className="flex flex-col items-center">
-                            <MapPin className="w-8 h-8 text-[#CC3D4B] animate-pulse" />
-                            <span className="text-sm font-semibold mt-1">Your Location</span>
-                        </div>
-                        <div className="flex flex-col items-center">
-                            <Truck className="w-8 h-8 text-green-600 animate-bounce" />
-                            <span className="text-sm font-semibold mt-1">NGO Vehicle</span>
-                        </div>
-                    </div>
+            <DonationTrackingMap
+                donorLocation={donorLocation}
+                ngoLocation={ngoLocation}
+            />
+
+            <div className="mt-4 grid grid-cols-2 gap-4">
+                <div className="bg-blue-50 p-3 rounded-lg text-center border border-blue-200 font-semibold">
+                    <p className="text-xs text-gray-600 mb-1">Distance</p>
+                    <p className="text-2xl font-bold text-blue-600">{distanceKm} km</p>
                 </div>
-                {/* Distance Indicator Overlay */}
-                <div className="absolute top-4 left-4 bg-white p-2 rounded-lg shadow-md text-sm font-medium">
-                    Distance: <span className="text-blue-600">{distanceKm.toFixed(2)} km</span>
-                </div>
-                <div className="absolute top-4 right-4 bg-white p-2 rounded-lg shadow-md text-sm font-medium">
-                    ETA: <span className="text-green-600">{etaMinutes > 0 ? `${etaMinutes} min` : 'Arrived!'}</span>
+                <div className="bg-green-50 p-3 rounded-lg text-center border border-green-200 font-semibold">
+                    <p className="text-xs text-gray-600 mb-1">ETA</p>
+                    <p className="text-2xl font-bold text-green-600">{etaMinutes > 0 ? `${etaMinutes} min` : 'Arrived!'}</p>
                 </div>
             </div>
 
-            <p className="mt-4 text-center text-sm text-gray-600">
-                Tracking live location of NGO vehicle accepting your donation. Location refreshes every 5 seconds.
-            </p>
+            <div className="mt-4 bg-gradient-to-r from-blue-50 to-green-50 p-3 rounded-lg border border-blue-200">
+                <p className="text-center text-sm text-gray-700 flex items-center justify-center font-semibold">
+                    <Truck className="w-4 h-4 mr-2 text-green-600 animate-pulse" />
+                    NGO vehicle is on the way. Updates every 5 seconds.
+                </p>
+            </div>
         </div>
     );
 };
 
-
-// --- MAIN DASHBOARD COMPONENT ---
-
 const DonorDashboard = ({ onLogout }) => {
+    const [currentUser, setCurrentUser] = useState(null);
     const [donations, setDonations] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+
     const [donationForm, setDonationForm] = useState({
         foodType: '',
         quantity: '',
         expiresInHours: '',
-        locationText: MOCK_CURRENT_USER.locationText, // Pre-fill with user's location
-        gpsCoordinates: MOCK_CURRENT_USER.location,
+        locationText: 'Fetching location...',
+        location: { lat: null, lng: null },
     });
     const [message, setMessage] = useState(null);
 
-    // Filter for the currently active/trackable donation
     const activeDonation = donations.find(d =>
-        d.status === 'accepted' || d.status === 'onTheWay'
+        (d.status === 'accepted' || d.status === 'onTheWay') && d.ngoLocation
     );
 
-    // Function to load donations (including location refresh for active ones)
-    const loadDonations = async () => {
-        setIsLoading(true);
-        setMessage(null);
+    const stats = {
+        total: donations.length,
+        pending: donations.filter(d => d.status === 'pending').length,
+        completed: donations.filter(d => d.status === 'completed' || d.status === 'picked').length,
+        active: donations.filter(d => d.status === 'accepted' || d.status === 'onTheWay').length,
+        totalQuantity: donations.reduce((sum, d) => sum + (d.quantity || 0), 0)
+    };
+
+    const fetchCurrentUser = useCallback(async () => {
         try {
-            const data = await mockFetchDonations();
-            setDonations(data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+            const token = localStorage.getItem('authToken');
+            const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                const user = data.user;
+                setCurrentUser(user);
+                setDonationForm(prev => ({
+                    ...prev,
+                    locationText: user.location?.text || 'GPS not set, click Auto',
+                    location: user.location || { lat: null, lng: null },
+                }));
+            } else {
+                if (response.status === 401 || response.status === 403) {
+                    onLogout();
+                }
+            }
         } catch (error) {
-            setMessage({ type: 'error', text: 'Failed to fetch donations.' });
-        } finally {
+            console.error('Fetch User Error:', error);
+        }
+    }, [onLogout]);
+
+    const loadDonations = useCallback(async () => {
+        if (!currentUser) return;
+
+        const token = localStorage.getItem('authToken');
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/donations/my`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setDonations(data.donations.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+            } else {
+                setMessage({ type: 'error', text: data.message || 'Failed to fetch donations.' });
+                if (response.status === 401 || response.status === 403) {
+                    onLogout();
+                }
+            }
+        } catch (error) {
+            console.error('Fetch Donations Error:', error);
+            setMessage({ type: 'error', text: 'A network error occurred while fetching donations.' });
+        }
+    }, [onLogout, currentUser]);
+
+    useEffect(() => {
+        fetchCurrentUser();
+    }, [fetchCurrentUser]);
+
+    useEffect(() => {
+        if (currentUser) {
+            if (!donations.length) {
+                setIsLoading(true);
+                loadDonations().finally(() => setIsLoading(false));
+            }
+        }
+        const intervalId = setInterval(() => {
+            if (activeDonation && currentUser) {
+                loadDonations();
+            }
+        }, 5000);
+
+        return () => clearInterval(intervalId);
+    }, [currentUser, activeDonation, loadDonations, donations.length]);
+
+    const handleFormChange = (e) => {
+        const { id, value } = e.target;
+        setMessage(null);
+
+        const newValue = id === 'quantity' || id === 'expiresInHours' ? (value ? parseInt(value) : '') : value;
+        setDonationForm(prev => ({ ...prev, [id]: newValue }));
+    };
+
+    const handleCreateDonation = async (e) => {
+        e.preventDefault();
+        setMessage(null);
+        setIsLoading(true);
+
+        const { foodType, quantity, expiresInHours, location } = donationForm;
+
+        if (!foodType || !quantity || !expiresInHours || location.lat === null || location.lng === null) {
+            setMessage({ type: 'error', text: 'All donation fields and GPS location (click AUTO) are required.' });
+            setIsLoading(false);
+            return;
+        }
+
+        const payload = { foodType, quantity, expiresInHours, location };
+
+        try {
+            const token = localStorage.getItem('authToken');
+            const response = await fetch(`${API_BASE_URL}/api/donations/create`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify(payload),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setMessage({ type: 'success', text: 'Donation created successfully! Awaiting NGO acceptance.' });
+
+                await loadDonations();
+
+                setDonationForm(prev => ({
+                    ...prev, foodType: '', quantity: '', expiresInHours: ''
+                }));
+
+                setIsLoading(false);
+
+            } else {
+                setMessage({ type: 'error', text: data.message || 'Failed to create donation.' });
+                setIsLoading(false);
+            }
+
+        } catch (error) {
+            console.error('Create Donation Error:', error);
+            setMessage({ type: 'error', text: 'A network error occurred during donation creation.' });
             setIsLoading(false);
         }
     };
 
-    // Initial load and polling setup
-    useEffect(() => {
-        loadDonations(); // Initial load
+    const handleAutoGps = () => {
+        const defaultMockLocation = { text: 'Mock GPS Location (Delhi)', lat: 28.6139, lng: 77.2090 };
 
-        const intervalId = setInterval(() => {
-            // Only poll if there is an active donation to track
-            if (activeDonation) {
-                // We use the mockFetchDonations to simulate the API call that provides the NGO's updated location
-                mockFetchDonations().then(data => {
-                    setDonations(data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-                });
-            }
-        }, 5000); // Poll every 5 seconds
+        let userLocation = defaultMockLocation;
 
-        return () => clearInterval(intervalId); // Cleanup on unmount
-    }, [activeDonation]); // Re-run effect if activeDonation status changes
-
-    const handleFormChange = (e) => {
-        const { id, value } = e.target;
-        setDonationForm(prev => ({ ...prev, [id]: value }));
-    };
-
-    const handleCreateDonation = (e) => {
-        e.preventDefault();
-        setMessage(null);
-
-        // Basic validation
-        if (!donationForm.foodType || !donationForm.quantity || !donationForm.expiresInHours) {
-            setMessage({ type: 'error', text: 'Food Type, Quantity, and Expiry Hours are required.' });
-            return;
+        if (currentUser?.location && currentUser.location.lat !== null) {
+            userLocation = {
+                text: currentUser.location.text || 'Saved Location',
+                lat: currentUser.location.lat,
+                lng: currentUser.location.lng
+            };
         }
 
-        // Mock API call to create donation
-        const newDonation = {
-            id: Date.now(),
-            foodType: donationForm.foodType,
-            quantity: parseInt(donationForm.quantity),
-            expiresInHours: parseInt(donationForm.expiresInHours),
-            location: donationForm.locationText,
-            status: 'pending',
-            createdAt: new Date(),
-            ngoName: null,
-            ngoLocation: null,
-        };
-
-        // Update local state and show success message
-        setDonations(prev => [newDonation, ...prev]);
-        setDonationForm({ foodType: '', quantity: '', expiresInHours: '', locationText: MOCK_CURRENT_USER.locationText, gpsCoordinates: MOCK_CURRENT_USER.location });
-        setMessage({ type: 'success', text: 'Donation created successfully! Awaiting NGO acceptance.' });
-    };
-
-    const handleAutoGps = () => {
-        // In a real app, this would use navigator.geolocation.getCurrentPosition()
-        alert(`Simulating GPS autofill: Location set to ${MOCK_CURRENT_USER.locationText}`);
         setDonationForm(prev => ({
             ...prev,
-            locationText: MOCK_CURRENT_USER.locationText,
-            gpsCoordinates: MOCK_CURRENT_USER.location
+            locationText: userLocation.text,
+            location: { lat: userLocation.lat, lng: userLocation.lng }
         }));
+        setMessage({ type: 'success', text: `Location set to ${userLocation.text}` });
     };
 
-    const buttonStyle = { backgroundColor: PRIMARY_RED };
+    const buttonStyle = { backgroundColor: DARK_CHARCOAL };
+
+    if (!currentUser) {
+        return (
+            <div className="min-h-screen pt-20 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#CC3D4B] mx-auto mb-4"></div>
+                    <p className="text-lg text-gray-600 font-semibold">Loading Dashboard...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="min-h-screen bg-gray-50 pt-20">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pt-20">
             <div className="w-full mx-auto px-4 sm:px-6 lg:px-20 py-8">
 
-                {/* ⿡ Page Header */}
-                <div className="flex justify-between items-center mb-10 pb-4 border-b border-gray-200">
-                    <div>
-                        <h1 className="text-4xl font-extrabold" style={{ color: DARK_CHARCOAL }}>BloomNet</h1>
-                        <p className="text-lg text-gray-600 mt-1">Donor Dashboard</p>
-                        <p className="text-xl font-semibold mt-2 flex items-center text-gray-800">
-                            <User className="w-5 h-5 mr-2 text-[#CC3D4B]" /> Welcome, {MOCK_CURRENT_USER.name}
-                        </p>
+                <div className="mb-8">
+                    <h1 className="text-4xl font-extrabold mb-2 font-semibold" style={{ color: DARK_CHARCOAL }}>
+                        Welcome back, {currentUser.name}! 👋
+                    </h1>
+                    <p className="text-lg text-gray-600 font-semibold">Here's your donation impact summary</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <StatCard
+                        icon={Package}
+                        title="Total Donations"
+                        value={stats.total}
+                        subtitle="All time"
+                        color="#CC3D4B"
+                        bgColor="bg-white"
+                    />
+                    <StatCard
+                        icon={Clock}
+                        title="Pending"
+                        value={stats.pending}
+                        subtitle="Awaiting acceptance"
+                        color="#f59e0b"
+                        bgColor="bg-white"
+                    />
+                    <StatCard
+                        icon={Truck}
+                        title="Active"
+                        value={stats.active}
+                        subtitle="In progress"
+                        color="#10b981"
+                        bgColor="bg-white"
+                    />
+                    <StatCard
+                        icon={Award}
+                        title="Completed"
+                        value={stats.completed}
+                        subtitle="Successfully delivered"
+                        color="#8b5cf6"
+                        bgColor="bg-white"
+                    />
+                </div>
+
+                <div className="bg-gradient-to-r from-[#CC3D4B] to-[#a9303c] text-white rounded-xl p-6 mb-8 shadow-lg font-semibold">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-2xl font-bold mb-2">Your Impact</h3>
+                            <p className="text-white/90">You've donated a total of <span className="font-bold text-3xl">{stats.totalQuantity}</span> units of food!</p>
+                            <p className="text-sm text-white/80 mt-2">Thank you for making a difference in your community 💚</p>
+                        </div>
+                        <Heart className="w-20 h-20 text-white/20" />
                     </div>
-                    <button
-                        onClick={onLogout} // Placeholder for logout action
-                        className="flex items-center py-2 px-4 text-white rounded font-bold transition duration-150 shadow-md whitespace-nowrap bg-gray-500 hover:bg-gray-700 active:scale-[0.98]"
-                    >
-                        <LogOut className="w-5 h-5 mr-1" />
-                        <span>Logout</span>
-                    </button>
                 </div>
 
                 {message && <div className="mb-6"><MessageDisplay message={message} /></div>}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-                    {/* ⿢ Create Donation Form */}
                     <div className="lg:col-span-1">
-                        <div className="p-6 bg-white rounded-xl shadow-lg border border-gray-100 sticky top-24">
-                            <h2 className="text-2xl font-bold mb-6 flex items-center" style={{ color: DARK_CHARCOAL }}>
-                                <PlusCircle className="w-6 h-6 mr-2 text-[#CC3D4B]" /> Create New Donation
+                        <div className="p-6 bg-white rounded-xl shadow-lg border border-gray-200 sticky top-24">
+                            <h2 className="text-2xl font-bold mb-6 flex items-center font-semibold" style={{ color: DARK_CHARCOAL }}>
+                                <PlusCircle className="w-6 h-6 mr-2" style={{ color: PRIMARY_RED }} /> Quick Donation
                             </h2>
                             <form onSubmit={handleCreateDonation} className="space-y-4">
                                 <FormInput
                                     id="foodType"
-                                    label="Food Type (e.g., Rice, Bread, Meals)"
+                                    label="Food Type (e.g., Rice, Meals)"
                                     icon={Package}
                                     value={donationForm.foodType}
                                     onChange={handleFormChange}
@@ -297,16 +415,16 @@ const DonorDashboard = ({ onLogout }) => {
                                 />
                                 <FormInput
                                     id="quantity"
-                                    label="Quantity (in units/servings/kg)"
+                                    label="Quantity (in units)"
                                     type="number"
-                                    icon={User}
+                                    icon={Activity}
                                     value={donationForm.quantity}
                                     onChange={handleFormChange}
                                     required
                                 />
                                 <FormInput
                                     id="expiresInHours"
-                                    label="Expires In Hours (e.g., 3, 24)"
+                                    label="Expires In Hours"
                                     type="number"
                                     icon={Clock}
                                     value={donationForm.expiresInHours}
@@ -314,71 +432,79 @@ const DonorDashboard = ({ onLogout }) => {
                                     required
                                 />
 
-                                {/* Location Input with GPS button */}
                                 <div className="relative">
                                     <FormInput
                                         id="locationText"
-                                        label="Location (Manual Text)"
+                                        label="Location (Address)"
                                         icon={MapPin}
                                         value={donationForm.locationText}
-                                        onChange={handleFormChange}
+                                        onChange={(e) => setDonationForm(prev => ({ ...prev, locationText: e.target.value }))}
                                     />
                                     <button
                                         type="button"
                                         onClick={handleAutoGps}
-                                        className="absolute top-0 right-0 mt-3 mr-3 p-2 text-sm font-semibold rounded-lg text-white transition duration-150 flex items-center bg-blue-500 hover:bg-blue-600"
+                                        className="absolute top-0 right-0 mt-3 mr-3 p-2 text-sm font-semibold rounded-lg text-white transition duration-150 flex items-center bg-blue-500 hover:bg-blue-600 shadow-md cursor-pointer"
                                     >
                                         <Compass className="w-4 h-4 mr-1" />
-                                        GPS Auto
+                                        Auto
                                     </button>
+                                    <p className="text-xs text-gray-500 mt-1 font-semibold">
+                                        📍 {donationForm.location.lat?.toFixed(4)}, {donationForm.location.lng?.toFixed(4)}
+                                    </p>
                                 </div>
-
 
                                 <button
                                     type="submit"
-                                    className="w-full py-3 mt-4 text-white font-bold rounded-lg transition duration-200 shadow-md hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center"
+                                    disabled={isLoading}
+                                    className="w-full py-3 mt-4 text-white font-bold rounded-lg transition duration-200 shadow-lg  active:scale-[0.98] flex items-center justify-center font-semibold cursor-pointer"
                                     style={buttonStyle}
                                 >
-                                    <PlusCircle className="w-5 h-5 mr-2" />
-                                    Create Donation
+                                    {isLoading ? 'Creating...' : (
+                                        <>
+                                            <PlusCircle className="w-5 h-5 mr-2" />
+                                            Create Donation
+                                        </>
+                                    )}
                                 </button>
                             </form>
                         </div>
                     </div>
 
-                    {/* ⿣ Your Donations List & ⿤ Live Tracking Map */}
                     <div className="lg:col-span-2 space-y-8">
 
-                        {/* Live Tracking Section (Only shows if activeDonation is found) */}
                         {activeDonation && activeDonation.ngoLocation && (
-                            <LiveTrackingMap
-                                donorLocation={MOCK_CURRENT_USER.location}
+                            <LiveTrackingSection
+                                donorLocation={activeDonation.location}
                                 ngoLocation={activeDonation.ngoLocation}
                             />
                         )}
 
-                        {/* Donations List */}
-                        <div className="p-6 bg-white rounded-xl shadow-lg border border-gray-100">
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-2xl font-bold flex items-center" style={{ color: DARK_CHARCOAL }}>
-                                    <Package className="w-6 h-6 mr-2 text-[#CC3D4B]" /> Your Donations ({donations.length})
+                        <div className="p-6 bg-white rounded-xl shadow-lg border border-gray-200">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-2xl font-bold flex items-center font-semibold" style={{ color: DARK_CHARCOAL }}>
+                                    <TrendingUp className="w-6 h-6 mr-2" style={{ color: PRIMARY_RED }} />
+                                    Your Donations ({donations.length})
                                 </h2>
                                 <button
-                                    onClick={loadDonations}
+                                    onClick={() => { setIsLoading(true); loadDonations().finally(() => setIsLoading(false)); }}
                                     disabled={isLoading}
-                                    className={`flex items-center text-sm font-semibold py-1 px-3 rounded transition ${isLoading ? 'text-gray-400' : 'text-[#CC3D4B] hover:text-red-700'}`}
+                                    className={`flex items-center text-sm font-semibold py-2 px-4 rounded-lg transition ${isLoading ? 'text-gray-400 bg-gray-100' : 'text-gray-700 hover:bg-gray-100 border border-gray-300'} cursor-pointer`}
                                 >
-                                    <RefreshCw className={`w-4 h-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+                                    <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
                                     {isLoading ? 'Refreshing...' : 'Refresh'}
                                 </button>
                             </div>
 
-                            <div className="max-h-[60vh] overflow-y-auto">
+                            <div className="max-h-[70vh] overflow-y-auto pr-2">
                                 {donations.length === 0 ? (
-                                    <p className="text-center text-gray-500 p-8">You have not created any donations yet.</p>
+                                    <div className="text-center py-12 font-semibold">
+                                        <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                                        <p className="text-gray-500 text-lg">No donations yet</p>
+                                        <p className="text-gray-400 text-sm mt-2">Create your first donation to get started!</p>
+                                    </div>
                                 ) : (
                                     donations.map(donation => (
-                                        <DonationItem key={donation.id} donation={donation} />
+                                        <DonationItem key={donation._id} donation={donation} />
                                     ))
                                 )}
                             </div>

@@ -1,406 +1,586 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-    LogOut, 
-    Map, 
-    Package, 
-    Clock, 
-    Truck, 
-    CheckCircle, 
-    LocateFixed, 
-    Users, 
-    Compass, 
-    RefreshCw, 
-    XCircle, 
-    MapPin // 🛑 FIXED: MapPin icon imported here
-} from 'lucide-react';
-import { FormInput, PRIMARY_RED, DARK_CHARCOAL, MessageDisplay } from './Shared';
+import { Map, Package, Clock, Truck, CheckCircle, LocateFixed, Users, RefreshCw, MapPin, Navigation, TrendingUp, Award, Target, Activity } from 'lucide-react';
+import { PRIMARY_RED, DARK_CHARCOAL, MessageDisplay, API_BASE_URL } from './Shared';
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 
-// --- MOCK DATA & API FUNCTIONS ---
-const MOCK_NGO_USER = {
-    name: "City Welfare Foundation",
-    location: { lat: 28.59, lng: 77.20 }, // NGO HQ near New Delhi center
-    locationText: 'NGO Headquarters, Central Delhi',
-};
+// Custom Icons
+const ngoIcon = new L.Icon({
+    iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
 
-const MOCK_PENDING_DONATIONS_DATA = [
-    {
-        id: 201, foodType: 'Dal Rice', quantity: 20, unit: 'plates', expiresInHours: 2, 
-        location: 'LPU Gate 3, Jalandhar', donorLocation: { lat: 31.255, lng: 75.69 }, 
-        status: 'pending', donorName: 'Ravi K.'
-    },
-    {
-        id: 202, foodType: 'Fresh Fruits', quantity: 15, unit: 'kg', expiresInHours: 12, 
-        location: 'Sector 15, Chandigarh', donorLocation: { lat: 30.73, lng: 76.78 }, 
-        status: 'pending', donorName: 'Priya S.'
-    },
-    {
-        id: 203, foodType: 'Canned Food', quantity: 50, unit: 'items', expiresInHours: 72, 
-        location: 'Dwarka, New Delhi', donorLocation: { lat: 28.58, lng: 77.05 }, 
-        status: 'pending', donorName: 'Mohan L.'
-    },
-];
+const donorIcon = new L.Icon({
+    iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
 
-const MOCK_ACCEPTED_DONATIONS_DATA = [
-    {
-        id: 301, foodType: 'Chapati', quantity: 100, unit: 'units', expiresInHours: 1, 
-        location: 'Connaught Place, Delhi', donorLocation: { lat: 28.63, lng: 77.22 }, 
-        status: 'accepted', donorName: 'Aman S.'
-    },
-];
+const StatCard = ({ icon: Icon, title, value, subtitle, color, bgColor }) => (
+    <div className={`${bgColor} border-l-4 rounded-lg p-6 shadow-md hover:shadow-lg transition-all duration-300 transform  cursor-pointer`} style={{ borderColor: color }}>
+        <div className="flex items-center justify-between">
+            <div>
+                <p className="text-sm text-gray-600 font-semibold mb-1">{title}</p>
+                <h3 className="text-3xl font-extrabold" style={{ color: color }}>{value}</h3>
+                {subtitle && <p className="text-xs text-gray-500 mt-1 font-semibold">{subtitle}</p>}
+            </div>
+            <div className="p-4 rounded-full" style={{ backgroundColor: `${color}20` }}>
+                <Icon className="w-8 h-8" style={{ color: color }} />
+            </div>
+        </div>
+    </div>
+);
 
-// Mock API call to fetch all pending donations
-const mockFetchPendingDonations = () => {
-    return new Promise(resolve => {
-        setTimeout(() => resolve(MOCK_PENDING_DONATIONS_DATA), 500);
-    });
-};
+// Auto-center map
+function MapBoundsHandler({ markers }) {
+    const map = useMap();
 
-// Mock API call to update NGO's location and check status
-const mockUpdateLocation = (donationId, ngoLocation) => {
-    return new Promise(resolve => {
-        setTimeout(() => {
-            console.log(`Mock API: Updating location for donation ${donationId}`);
-            // Simulate minor movement
-            const newLat = ngoLocation.lat + (Math.random() - 0.5) * 0.001;
-            const newLng = ngoLocation.lng + (Math.random() - 0.5) * 0.001;
-            resolve({ 
-                success: true, 
-                message: 'Location updated.', 
-                newNgoLocation: { lat: newLat, lng: newLng } 
-            });
-        }, 50);
-    });
-};
+    useEffect(() => {
+        if (markers && markers.length > 0) {
+            const bounds = L.latLngBounds(markers.map(m => [m.lat, m.lng]));
+            if (bounds.isValid()) {
+                map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+            }
+        }
+    }, [markers, map]);
 
-// Mock API call to change status
-const mockUpdateStatus = (donationId, newStatus) => {
-    return new Promise(resolve => {
-        setTimeout(() => {
-            console.log(`Mock API: Status updated for donation ${donationId} to ${newStatus}`);
-            resolve({ success: true, message: `Status updated to ${newStatus}` });
-        }, 500);
-    });
-};
+    return null;
+}
 
-// --- HELPER COMPONENTS ---
-
-// Simple distance calculation (Simplified Haversine formula for illustration)
+// Distance Calculation
 const calculateDistance = (loc1, loc2) => {
-    const R = 6371; // km
-    const dLat = (loc2.lat - loc1.lat) * (Math.PI / 180);
-    const dLon = (loc2.lng - loc1.lng) * (Math.PI / 180);
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + 
-              Math.cos(loc1.lat * (Math.PI / 180)) * Math.cos(loc2.lat * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    if (!loc1 || !loc2 || loc1.lat === null || loc2.lat === null) return 'N/A';
+    const R = 6371;
+    const toRad = (value) => value * Math.PI / 180;
+
+    const dLat = toRad(loc2.lat - loc1.lat);
+    const dLon = toRad(loc2.lng - loc1.lng);
+    const lat1 = toRad(loc1.lat);
+    const lat2 = toRad(loc2.lat);
+
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return (R * c).toFixed(1);
 };
 
+// Interactive Map Component
+const InteractiveDonationMap = ({ ngoLocation, pendingDonations, onAcceptDonation }) => {
+    if (!ngoLocation || ngoLocation.lat === null) {
+        return (
+            <div className="h-[500px] bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+                <div className="text-center">
+                    <LocateFixed className="w-12 h-12 text-gray-400 mx-auto mb-3 animate-pulse" />
+                    <p className="text-gray-500 font-semibold">Setting up your location...</p>
+                </div>
+            </div>
+        );
+    }
 
-// --- NGO DASHBOARD COMPONENT ---
+    const allMarkers = [
+        ngoLocation,
+        ...pendingDonations.filter(d => d.location?.lat).map(d => d.location)
+    ];
+
+    return (
+        <MapContainer
+            center={[ngoLocation.lat, ngoLocation.lng]}
+            zoom={13}
+            scrollWheelZoom={true}
+            className="w-full h-[500px] rounded-lg shadow-md"
+        >
+            <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; OpenStreetMap'
+            />
+
+            <Marker position={[ngoLocation.lat, ngoLocation.lng]} icon={ngoIcon}>
+                <Popup>
+                    <div className="text-center p-2 font-semibold">
+                        <LocateFixed className="w-6 h-6 mx-auto text-blue-600 mb-2" />
+                        <p className="font-bold">Your NGO Location</p>
+                        <p className="text-xs text-gray-500 mt-1">Base Station</p>
+                    </div>
+                </Popup>
+            </Marker>
+
+            {pendingDonations.filter(d => d.location?.lat).map(donation => {
+                const distance = calculateDistance(ngoLocation, donation.location);
+
+                return (
+                    <Marker
+                        key={donation._id}
+                        position={[donation.location.lat, donation.location.lng]}
+                        icon={donorIcon}
+                    >
+                        <Popup>
+                            <div className="p-3 min-w-[200px] font-semibold">
+                                <div className="flex items-start space-x-2 mb-2">
+                                    <Package className="w-5 h-5 text-orange-600 flex-shrink-0" />
+                                    <div>
+                                        <p className="font-bold text-gray-800">{donation.foodType}</p>
+                                        <p className="text-sm text-gray-600">Qty: {donation.quantity}</p>
+                                    </div>
+                                </div>
+
+                                <div className="text-xs text-gray-500 space-y-1 mb-3">
+                                    <p className="flex items-center">
+                                        <Navigation className="w-3 h-3 mr-1" />
+                                        Distance: <span className="font-bold ml-1">{distance} km</span>
+                                    </p>
+                                    <p className="flex items-center">
+                                        <Clock className="w-3 h-3 mr-1" />
+                                        Expires: {donation.expiresInHours}h
+                                    </p>
+                                    {donation.donorId?.name && (
+                                        <p>Donor: {donation.donorId.name}</p>
+                                    )}
+                                </div>
+
+                                <button
+                                    onClick={() => onAcceptDonation(donation._id)}
+                                    className="w-full py-2 text-white font-semibold rounded text-sm cursor-pointer hover:opacity-90"
+                                    style={{ backgroundColor: PRIMARY_RED }}
+                                >
+                                    Accept Pickup
+                                </button>
+                            </div>
+                        </Popup>
+                    </Marker>
+                );
+            })}
+
+            <MapBoundsHandler markers={allMarkers} />
+        </MapContainer>
+    );
+};
 
 const NgoDashboard = ({ onLogout }) => {
+    const [currentUser, setCurrentUser] = useState(null);
     const [pendingDonations, setPendingDonations] = useState([]);
-    const [acceptedDonations, setAcceptedDonations] = useState(MOCK_ACCEPTED_DONATIONS_DATA);
-    const [ngoLocation, setNgoLocation] = useState(MOCK_NGO_USER.location);
+    const [acceptedDonations, setAcceptedDonations] = useState([]);
+    const [ngoLocation, setNgoLocation] = useState({ lat: null, lng: null });
     const [message, setMessage] = useState(null);
     const [isTracking, setIsTracking] = useState(false);
     const [trackingDonationId, setTrackingDonationId] = useState(null);
     const [isLoadingPending, setIsLoadingPending] = useState(false);
-    
-    // The currently active donation being tracked
-    const activeTrackingDonation = acceptedDonations.find(d => d.id === trackingDonationId);
 
+    const activeTrackingDonation = acceptedDonations.find(d => d._id === trackingDonationId);
 
-    // 1. Fetch Pending Donations (and Poll)
-    const loadPendingDonations = useCallback(async () => {
-        setIsLoadingPending(true);
+    // Calculate statistics
+    const stats = {
+        totalAccepted: acceptedDonations.length,
+        pending: pendingDonations.length,
+        active: acceptedDonations.filter(d => d.status === 'accepted' || d.status === 'onTheWay').length,
+        completed: acceptedDonations.filter(d => d.status === 'picked' || d.status === 'completed').length,
+        totalQuantity: acceptedDonations.reduce((sum, d) => sum + (d.quantity || 0), 0)
+    };
+
+    const fetchCurrentUser = useCallback(async () => {
         try {
-            const data = await mockFetchPendingDonations();
-            setPendingDonations(data);
+            const token = localStorage.getItem('authToken');
+            const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                const user = data.user;
+                setCurrentUser(user);
+                if (user.location && user.location.lat !== null) {
+                    setNgoLocation(user.location);
+                } else {
+                    setNgoLocation({ lat: 28.6139, lng: 77.2090 });
+                }
+            } else {
+                if (response.status === 401 || response.status === 403) {
+                    onLogout();
+                }
+            }
         } catch (error) {
-            setMessage({ type: 'error', text: 'Failed to load pending donations.' });
+            console.error('Fetch User Error:', error);
+        }
+    }, [onLogout]);
+
+    const loadDonations = useCallback(async () => {
+        if (!currentUser) return;
+
+        setIsLoadingPending(true);
+
+        try {
+            const token = localStorage.getItem('authToken');
+
+            const pendingResponse = await fetch(`${API_BASE_URL}/api/donations/pending`, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            const data = await pendingResponse.json();
+
+            if (pendingResponse.ok) {
+                setPendingDonations(data.donations || data);
+            }
+
+            const acceptedResponse = await fetch(`${API_BASE_URL}/api/donations/my-accepted`, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            const acceptedData = await acceptedResponse.json();
+
+            if (acceptedResponse.ok) {
+                setAcceptedDonations(acceptedData.donations || acceptedData);
+            }
+
+        } catch (error) {
+            console.error('Fetch Donations Error:', error);
+            setMessage({ type: 'error', text: 'Network error occurred.' });
         } finally {
             setIsLoadingPending(false);
+        }
+    }, [currentUser]);
+
+    useEffect(() => {
+        fetchCurrentUser();
+    }, [fetchCurrentUser]);
+
+    useEffect(() => {
+        if (currentUser) {
+            loadDonations();
+        }
+        const interval = setInterval(() => {
+            if (currentUser) loadDonations();
+        }, 10000);
+        return () => clearInterval(interval);
+    }, [loadDonations, currentUser]);
+
+    const updateNgoLocationAPI = useCallback(async (donationId, currentNgoLocation, isInitialStart) => {
+        const token = localStorage.getItem('authToken');
+        const response = await fetch(`${API_BASE_URL}/api/donations/${donationId}/update-location`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+                lat: currentNgoLocation.lat + (Math.random() - 0.5) * 0.0005,
+                lng: currentNgoLocation.lng + (Math.random() - 0.5) * 0.0005
+            }),
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+            setNgoLocation(data.donation.ngoLocation);
+
+            if (isInitialStart) {
+                setMessage({ type: 'success', text: 'Live tracking started!' });
+            }
+
+            setAcceptedDonations(prev => prev.map(d =>
+                d._id === donationId ? { ...d, status: 'onTheWay', ngoLocation: data.donation.ngoLocation } : d
+            ));
         }
     }, []);
 
     useEffect(() => {
-        loadPendingDonations(); // Initial load
+        if (!isTracking || !trackingDonationId || !activeTrackingDonation || ngoLocation.lat === null) return;
 
-        const pendingPoll = setInterval(loadPendingDonations, 10000); // Poll every 10s
-        return () => clearInterval(pendingPoll);
-    }, [loadPendingDonations]);
-
-
-    // 2. Live Tracking Polling (Every 5 seconds)
-    useEffect(() => {
-        if (!isTracking || !trackingDonationId) return;
-
-        const trackingPoll = setInterval(async () => {
-            if (!activeTrackingDonation) {
-                setIsTracking(false);
-                setTrackingDonationId(null);
-                return;
+        const trackingPoll = setInterval(() => {
+            if (activeTrackingDonation.status === 'accepted' || activeTrackingDonation.status === 'onTheWay') {
+                updateNgoLocationAPI(trackingDonationId, ngoLocation, false);
             }
-
-            try {
-                const result = await mockUpdateLocation(trackingDonationId, ngoLocation);
-                setNgoLocation(result.newNgoLocation);
-                setMessage({ type: 'info', text: 'Tracking location updated.' });
-            } catch (error) {
-                setMessage({ type: 'error', text: 'Failed to update live location.' });
-            }
-        }, 5000); // Poll every 5 seconds
+        }, 5000);
 
         return () => clearInterval(trackingPoll);
-    }, [isTracking, trackingDonationId, ngoLocation, activeTrackingDonation]);
+    }, [isTracking, trackingDonationId, activeTrackingDonation, ngoLocation, updateNgoLocationAPI]);
 
+    const handleAcceptDonation = async (donationId) => {
+        setMessage(null);
+        try {
+            const token = localStorage.getItem('authToken');
+            const response = await fetch(`${API_BASE_URL}/api/donations/${donationId}/accept`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
 
-    // --- ACTION HANDLERS ---
+            const data = await response.json();
 
-    // 3. Accept Donation
-    const handleAcceptDonation = (donation) => {
-        // Remove from pending list
-        setPendingDonations(prev => prev.filter(d => d.id !== donation.id));
-        
-        // Add to accepted list with 'accepted' status and current NGO location
-        const acceptedDonation = { 
-            ...donation, 
-            status: 'accepted', 
-            ngoLocation: ngoLocation,
-        };
-        setAcceptedDonations(prev => [acceptedDonation, ...prev]);
-        setMessage({ type: 'success', text: `Donation of ${donation.foodType} accepted!` });
-
-        // Automatically start tracking the newly accepted one
-        handleStartPickup(acceptedDonation.id); 
+            if (response.ok) {
+                const acceptedDonation = pendingDonations.find(d => d._id === donationId);
+                if (acceptedDonation) {
+                    setPendingDonations(prev => prev.filter(d => d._id !== donationId));
+                    setAcceptedDonations(prev => [{ ...acceptedDonation, status: 'accepted', acceptedBy: currentUser }, ...prev]);
+                    handleStartPickup(donationId);
+                }
+            } else {
+                setMessage({ type: 'error', text: data.message || 'Failed to accept.' });
+            }
+        } catch (error) {
+            console.error('Accept Error:', error);
+        }
     };
 
-    // 4. Start Pickup / Tracking
     const handleStartPickup = (id) => {
         setIsTracking(true);
         setTrackingDonationId(id);
-        
-        // Update the status of the accepted donation to 'onTheWay'
-        setAcceptedDonations(prev => prev.map(d => 
-            d.id === id ? { ...d, status: 'onTheWay' } : d
-        ));
-        
-        // Trigger the initial location update immediately
-        mockUpdateLocation(id, ngoLocation); 
-        setMessage({ type: 'info', text: 'Live tracking started. On the way to pickup!' });
+        if (ngoLocation.lat !== null) {
+            updateNgoLocationAPI(id, ngoLocation, true);
+        }
     };
 
-    // 4. Pickup Completed
     const handlePickupCompleted = async (id) => {
         setIsTracking(false);
         setTrackingDonationId(null);
-        setMessage(null);
 
-        // Mock API call to change status
-        await mockUpdateStatus(id, 'picked');
-        
-        setAcceptedDonations(prev => prev.map(d => 
-            d.id === id ? { ...d, status: 'picked', ngoLocation: null } : d
-        ));
-        
-        setMessage({ type: 'success', text: 'Pickup completed! Thank you.' });
+        try {
+            const token = localStorage.getItem('authToken');
+            const response = await fetch(`${API_BASE_URL}/api/donations/${id}/mark-picked`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+
+            if (response.ok) {
+                setAcceptedDonations(prev => prev.map(d =>
+                    d._id === id ? { ...d, status: 'picked', ngoLocation: null } : d
+                ));
+                setMessage({ type: 'success', text: 'Pickup completed!' });
+            }
+        } catch (error) {
+            console.error('Pickup Complete Error:', error);
+        }
     };
 
-    // --- RENDER HELPERS ---
-
-    const renderMapMarker = (donation, isNgo) => {
-        const distance = calculateDistance(ngoLocation, donation.donorLocation || ngoLocation);
-        
+    if (!currentUser) {
         return (
-            <div 
-                key={donation.id}
-                className={`absolute p-2 rounded-lg shadow-xl cursor-pointer transition transform hover:scale-[1.05] ${isNgo ? 'bg-blue-600' : 'bg-orange-500'}`}
-                style={{
-                    // Mock positioning based on lat/lng difference relative to NGO location
-                    top: `${(donation.donorLocation?.lat - ngoLocation.lat) * -5000 + 150}px`,
-                    left: `${(donation.donorLocation?.lng - ngoLocation.lng) * 5000 + 250}px`,
-                }}
-            >
-                {isNgo ? 
-                    <LocateFixed className="w-6 h-6 text-white animate-pulse" /> : 
-                    <Package className="w-5 h-5 text-white" />
-                }
-                
-                {/* Popup Content */}
-                <div className="absolute left-1/2 transform -translate-x-1/2 bottom-full mb-2 p-3 bg-white text-gray-800 text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity w-48 pointer-events-none">
-                    <p className="font-bold">{donation.foodType} ({donation.quantity} {donation.unit})</p>
-                    <p className="mt-1 text-gray-600">Distance: {distance} km</p>
-                    
-                    {!isNgo && donation.status === 'pending' && (
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); handleAcceptDonation(donation); }}
-                            className="w-full mt-2 py-1 text-white text-xs font-semibold rounded"
-                            style={{ backgroundColor: PRIMARY_RED }}
-                        >
-                            Accept
-                        </button>
-                    )}
+            <div className="min-h-screen pt-20 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#CC3D4B] mx-auto mb-4"></div>
+                    <p className="text-lg text-gray-600 font-semibold">Loading Dashboard...</p>
                 </div>
             </div>
         );
-    };
+    }
 
     return (
-        <div className="min-h-screen bg-gray-50 pt-20">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pt-20">
             <div className="w-full mx-auto px-4 sm:px-6 lg:px-20 py-8">
-                
-                {/* 1️⃣ Page Header */}
-                <div className="flex justify-between items-center mb-10 pb-4 border-b border-gray-200">
-                    <div>
-                        <h1 className="text-4xl font-extrabold" style={{ color: DARK_CHARCOAL }}>BloomNet</h1>
-                        <p className="text-lg text-gray-600 mt-1">NGO Dashboard</p>
-                        <p className="text-xl font-semibold mt-2 flex items-center text-gray-800">
-                            <Users className="w-5 h-5 mr-2 text-blue-500" /> Welcome, {MOCK_NGO_USER.name}
-                        </p>
+
+                <div className="mb-8">
+                    <h1 className="text-4xl font-extrabold mb-2 font-semibold" style={{ color: DARK_CHARCOAL }}>
+                        Welcome, {currentUser.name}! 🎯
+                    </h1>
+                    <p className="text-lg text-gray-600 font-semibold">Your NGO Performance Dashboard</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <StatCard
+                        icon={CheckCircle}
+                        title="Total Accepted"
+                        value={stats.totalAccepted}
+                        subtitle="All donations"
+                        color="#CC3D4B"
+                        bgColor="bg-white"
+                    />
+                    <StatCard
+                        icon={Target}
+                        title="Available"
+                        value={stats.pending}
+                        subtitle="Near you"
+                        color="#f59e0b"
+                        bgColor="bg-white"
+                    />
+                    <StatCard
+                        icon={Truck}
+                        title="Active Pickups"
+                        value={stats.active}
+                        subtitle="In progress"
+                        color="#10b981"
+                        bgColor="bg-white"
+                    />
+                    <StatCard
+                        icon={Award}
+                        title="Completed"
+                        value={stats.completed}
+                        subtitle="Successfully picked"
+                        color="#8b5cf6"
+                        bgColor="bg-white"
+                    />
+                </div>
+
+                <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl p-6 mb-8 shadow-lg font-semibold">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-2xl font-bold mb-2">Collection Impact</h3>
+                            <p className="text-white/90">You've collected <span className="font-bold text-3xl">{stats.totalQuantity}</span> units of food!</p>
+                            <p className="text-sm text-white/80 mt-2">Keep up the amazing work! 🌟</p>
+                        </div>
+                        <Activity className="w-20 h-20 text-white/20" />
                     </div>
-                    <button
-                        onClick={onLogout} 
-                        className="flex items-center py-2 px-4 text-white rounded font-bold transition duration-150 shadow-md whitespace-nowrap bg-gray-500 hover:bg-gray-700 active:scale-[0.98]"
-                    >
-                        <LogOut className="w-5 h-5 mr-1" />
-                        <span>Logout</span>
-                    </button>
                 </div>
 
                 {message && <div className="mb-6"><MessageDisplay message={message} /></div>}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    
-                    {/* 2️⃣ Live Map Section */}
+
                     <div className="lg:col-span-2">
-                        <div className="p-4 bg-white rounded-xl shadow-lg border border-gray-100 relative">
-                            <h2 className="text-2xl font-bold mb-4 flex items-center" style={{ color: DARK_CHARCOAL }}>
-                                <Map className="w-6 h-6 mr-2 text-[#CC3D4B]" /> Nearby Donations Map
-                            </h2>
-                            <div className="relative h-[400px] bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
-                                {/* Map Placeholder */}
-                                <div className="text-gray-600 font-bold">Map View Placeholder (Centered at NGO Location)</div>
-                                
-                                {/* NGO Marker */}
-                                {renderMapMarker({ id: 'ngo', foodType: 'NGO', quantity: 0, location: MOCK_NGO_USER.locationText, donorLocation: ngoLocation, status: 'base' }, true)}
+                        <div className="p-6 bg-white rounded-xl shadow-lg border border-gray-200">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-2xl font-bold flex items-center font-semibold" style={{ color: DARK_CHARCOAL }}>
+                                    <Map className="w-6 h-6 mr-2 text-[#CC3D4B]" /> Nearby Donations
+                                </h2>
+                                <button
+                                    onClick={loadDonations}
+                                    disabled={isLoadingPending}
+                                    className={`flex items-center text-sm px-3 py-2 rounded-lg transition font-semibold cursor-pointer ${isLoadingPending ? 'text-gray-400 bg-gray-100' : 'text-blue-600 hover:bg-blue-50 border border-blue-200'}`}
+                                >
+                                    <RefreshCw className={`w-4 h-4 mr-1 ${isLoadingPending ? 'animate-spin' : ''}`} />
+                                    {isLoadingPending ? 'Refreshing...' : 'Refresh'}
+                                </button>
+                            </div>
 
-                                {/* Donation Markers (Pending) */}
-                                {pendingDonations.map(d => renderMapMarker(d, false))}
+                            <InteractiveDonationMap
+                                ngoLocation={ngoLocation}
+                                pendingDonations={pendingDonations}
+                                onAcceptDonation={handleAcceptDonation}
+                            />
 
-                                {/* Legend/Info */}
-                                <div className="absolute top-4 left-4 bg-white p-3 rounded-lg shadow-md text-sm font-medium">
-                                    <p><span className="inline-block w-3 h-3 bg-blue-600 rounded-full mr-2"></span> Your Location</p>
-                                    <p><span className="inline-block w-3 h-3 bg-orange-500 rounded-full mr-2"></span> Pending Donations</p>
+                            <div className="mt-4 flex items-center justify-between text-sm text-gray-600 bg-gradient-to-r from-blue-50 to-orange-50 p-3 rounded-lg border border-blue-200 font-semibold">
+                                <div className="flex items-center">
+                                    <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+                                    <span className="font-semibold">Your Location</span>
                                 </div>
-                                <div className="absolute top-4 right-4 text-xs bg-white p-3 rounded-lg shadow-md">
-                                    <p className="text-gray-600">Map automatically refreshes every 10s.</p>
+                                <div className="flex items-center">
+                                    <div className="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
+                                    <span className="font-semibold">Donations</span>
+                                </div>
+                                <div className="text-xs bg-white px-2 py-1 rounded font-semibold">
+                                    Click markers for details
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* 3️⃣ Pending Donation List */}
                     <div className="lg:col-span-1">
-                        <div className="p-6 bg-white rounded-xl shadow-lg border border-gray-100 sticky top-24">
-                            <h2 className="text-2xl font-bold mb-4 flex items-center" style={{ color: DARK_CHARCOAL }}>
-                                <Clock className="w-6 h-6 mr-2 text-yellow-500" /> Pending Pickups ({pendingDonations.length})
+                        <div className="p-6 bg-white rounded-xl shadow-lg border border-gray-200 sticky top-24">
+                            <h2 className="text-2xl font-bold mb-4 flex items-center font-semibold" style={{ color: DARK_CHARCOAL }}>
+                                <Clock className="w-6 h-6 mr-2 text-yellow-500" /> Pending ({stats.pending})
                             </h2>
-                            <button
-                                onClick={loadPendingDonations}
-                                disabled={isLoadingPending}
-                                className={`flex items-center mb-4 text-sm font-semibold py-1 px-3 rounded transition ${isLoadingPending ? 'text-gray-400' : 'text-blue-600 hover:text-blue-800'}`}
-                            >
-                                <RefreshCw className={`w-4 h-4 mr-1 ${isLoadingPending ? 'animate-spin' : ''}`} />
-                                {isLoadingPending ? 'Refreshing...' : 'Refresh List'}
-                            </button>
-                            <div className="space-y-4 max-h-[400px] overflow-y-auto">
+
+                            <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
                                 {pendingDonations.length === 0 ? (
-                                    <div className="text-center text-gray-500 p-4 border rounded-lg">No pending donations nearby.</div>
+                                    <div className="text-center py-12 font-semibold">
+                                        <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                                        <p className="text-gray-500">No pending donations</p>
+                                    </div>
                                 ) : (
-                                    pendingDonations.map(donation => (
-                                        <div key={donation.id} className="p-3 border border-gray-100 rounded-lg shadow-sm bg-gray-50 flex justify-between items-center">
-                                            <div>
-                                                <p className="text-md font-bold">{donation.foodType} ({donation.quantity} {donation.unit})</p>
-                                                <p className="text-sm text-gray-600 flex items-center mt-0.5">
-                                                    <MapPin className="w-4 h-4 mr-1 text-gray-400" /> {donation.location}
-                                                </p>
-                                                <p className="text-xs text-red-500 font-semibold flex items-center">
-                                                    <Clock className="w-3 h-3 mr-1" /> Expires in: {donation.expiresInHours} hours
-                                                </p>
-                                            </div>
-                                            <button
-                                                onClick={() => handleAcceptDonation(donation)}
-                                                className="py-2 px-4 text-white font-semibold rounded transition hover:opacity-90 active:scale-[0.98]"
-                                                style={{ backgroundColor: PRIMARY_RED }}
+                                    pendingDonations.map(donation => {
+                                        const distance = calculateDistance(ngoLocation, donation.location);
+                                        return (
+                                            <div
+                                                key={donation._id}
+                                                className="p-4 border-2 border-orange-200 rounded-lg shadow-sm bg-orange-50 hover:shadow-md transition-shadow cursor-pointer"
                                             >
-                                                Accept
-                                            </button>
-                                        </div>
-                                    ))
+                                                <p className="font-bold text-lg text-gray-800 font-semibold">{donation.foodType}</p>
+                                                <p className="text-sm text-gray-600 mt-1 font-semibold">Qty: {donation.quantity} units</p>
+                                                <p className="text-xs text-gray-500 flex items-center mt-2 font-semibold">
+                                                    <Navigation className="w-3 h-3 mr-1 text-blue-500" />
+                                                    <span className="font-bold">{distance} km away</span>
+                                                </p>
+                                                <button
+                                                    onClick={() => handleAcceptDonation(donation._id)}
+                                                    className="w-full mt-3 py-2 text-white font-semibold rounded-lg text-sm shadow-md hover:opacity-90 cursor-pointer"
+                                                    style={{ backgroundColor: PRIMARY_RED }}
+                                                >
+                                                    Accept Now
+                                                </button>
+                                            </div>
+                                        );
+                                    })
                                 )}
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* 5️⃣ Accepted Donation List & 4️⃣ Tracking Controls */}
                 <div className="mt-8">
-                    <div className="p-6 bg-white rounded-xl shadow-lg border border-gray-100">
-                        <h2 className="text-2xl font-bold mb-4 flex items-center" style={{ color: DARK_CHARCOAL }}>
-                            <CheckCircle className="w-6 h-6 mr-2 text-green-600" /> Accepted Donations
+                    <div className="p-6 bg-white rounded-xl shadow-lg border border-gray-200">
+                        <h2 className="text-2xl font-bold mb-6 flex items-center font-semibold" style={{ color: DARK_CHARCOAL }}>
+                            <TrendingUp className="w-6 h-6 mr-2 text-green-600" /> Your Accepted Donations
                         </h2>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {acceptedDonations.map(donation => (
-                                <div key={donation.id} className="p-4 border rounded-lg shadow-md bg-gray-50">
-                                    <p className="text-lg font-bold text-gray-800">{donation.foodType}</p>
-                                    <p className={`text-sm font-semibold uppercase mt-1 ${donation.status === 'picked' ? 'text-gray-500' : 'text-green-600'}`}>
-                                        Status: {donation.status}
-                                    </p>
-                                    <p className="text-sm text-gray-600 mt-2">Donor: <span className="font-medium">{donation.donorName}</span></p>
-                                    <p className="text-sm text-gray-600">Location: {donation.location}</p>
 
-                                    {/* 4️⃣ Tracking Controls */}
-                                    <div className="mt-4 space-y-2">
-                                        {donation.status !== 'picked' && (
-                                            <>
-                                                {/* Start/Stop Tracking Button */}
-                                                {isTracking && trackingDonationId === donation.id ? (
-                                                    <button
-                                                        onClick={() => setIsTracking(false)}
-                                                        className="w-full py-2 flex items-center justify-center text-white font-semibold rounded bg-yellow-500 hover:bg-yellow-600 transition"
-                                                    >
-                                                        <XCircle className="w-5 h-5 mr-2" /> Pause Tracking
-                                                    </button>
-                                                ) : (
-                                                    <button
-                                                        onClick={() => handleStartPickup(donation.id)}
-                                                        className="w-full py-2 flex items-center justify-center text-white font-semibold rounded transition"
-                                                        style={{ backgroundColor: PRIMARY_RED }}
-                                                        disabled={isTracking && trackingDonationId !== donation.id} // Disable if another is active
-                                                    >
-                                                        <Truck className="w-5 h-5 mr-2" /> {donation.status === 'accepted' ? 'Start Pickup' : 'Resume Tracking'}
-                                                    </button>
-                                                )}
+                        {acceptedDonations.length === 0 ? (
+                            <div className="text-center py-12 font-semibold">
+                                <CheckCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                                <p className="text-gray-500 text-lg">No accepted donations yet</p>
+                                <p className="text-gray-400 text-sm mt-2">Start accepting donations to see them here!</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {acceptedDonations.map(donation => (
+                                    <div key={donation._id} className="p-5 border-2 rounded-lg shadow-md bg-gradient-to-br from-white to-gray-50 hover:shadow-lg transition-shadow cursor-pointer" style={{ borderColor: donation.status === 'picked' ? '#8b5cf6' : '#10b981' }}>
+                                        <div className="flex justify-between items-start mb-3">
+                                            <p className="text-lg font-bold text-gray-800 font-semibold">{donation.foodType}</p>
+                                            <span className={`px-2 py-1 rounded-full text-xs font-bold font-semibold ${donation.status === 'picked' ? 'bg-purple-200 text-purple-800' : 'bg-green-200 text-green-800'
+                                                }`}>
+                                                {donation.status}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-gray-600 mb-4 font-semibold">Qty: {donation.quantity} units</p>
 
-                                                {/* Pickup Completed Button */}
-                                                <button
-                                                    onClick={() => handlePickupCompleted(donation.id)}
-                                                    disabled={donation.status === 'accepted'} // Should be "onTheWay" to complete
-                                                    className={`w-full py-2 flex items-center justify-center text-white font-semibold rounded transition ${donation.status === 'onTheWay' ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'}`}
-                                                >
-                                                    <Package className="w-5 h-5 mr-2" /> Pickup Completed
-                                                </button>
-                                            </>
-                                        )}
-                                        {donation.status === 'picked' && (
-                                            <p className="text-center text-sm text-gray-500 italic pt-2">Donation successfully delivered.</p>
-                                        )}
+                                        <div className="space-y-2">
+                                            {donation.status !== 'picked' && (
+                                                <>
+                                                    {isTracking && trackingDonationId === donation._id ? (
+                                                        <button
+                                                            onClick={() => setIsTracking(false)}
+                                                            className="w-full py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg font-semibold text-sm cursor-pointer"
+                                                        >
+                                                            Pause Tracking
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => handleStartPickup(donation._id)}
+                                                            className="w-full py-2 text-white rounded-lg font-semibold text-sm shadow-md cursor-pointer"
+                                                            style={{ backgroundColor: PRIMARY_RED }}
+                                                            disabled={isTracking && trackingDonationId !== donation._id}
+                                                        >
+                                                            <Truck className="w-4 h-4 inline mr-1" />
+                                                            {donation.status === 'accepted' ? 'Start Pickup' : 'Resume'}
+                                                        </button>
+                                                    )}
+
+                                                    <button
+                                                        onClick={() => handlePickupCompleted(donation._id)}
+                                                        disabled={donation.status !== 'onTheWay'}
+                                                        className={`w-full py-2 rounded-lg font-semibold text-sm ${donation.status === 'onTheWay'
+                                                                ? 'bg-green-600 hover:bg-green-700 text-white shadow-md cursor-pointer'
+                                                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                                            }`}
+                                                    >
+                                                        <CheckCircle className="w-4 h-4 inline mr-1" />
+                                                        Mark as Picked
+                                                    </button>
+                                                </>
+                                            )}
+                                            {donation.status === 'picked' && (
+                                                <div className="bg-purple-100 border border-purple-300 rounded-lg p-3 text-center font-semibold">
+                                                    <CheckCircle className="w-6 h-6 text-purple-600 mx-auto mb-1" />
+                                                    <p className="text-sm font-bold text-purple-800">Completed ✓</p>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

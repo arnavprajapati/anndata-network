@@ -1,1 +1,11 @@
 @import "tailwindcss";
+
+@font-face {
+    font-family: gilroy;
+    src: url('./assets/Gilroy-Regular.ttf');
+}
+
+body {
+    font-family: gilroy;
+    font-style: semibold;
+}
