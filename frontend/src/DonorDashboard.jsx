@@ -5,7 +5,7 @@ import DonationTrackingMap from './DonationTrackingMap';
 
 const StatCard = ({ icon: Icon, title, value, subtitle, color, bgColor }) => (
     <div
-        className={`${bgColor} border-l-4 rounded-lg p-6 shadow-md transition-all duration-300  cursor-pointer hover:shadow-lg`}
+        className={`${bgColor} border-l-4 rounded-lg p-6 shadow-md transition-all duration-300 cursor-pointer hover:shadow-lg`}
         style={{ borderColor: color }}
     >
         <div className="flex items-center justify-between">
@@ -145,12 +145,13 @@ const DonorDashboard = ({ onLogout }) => {
     const [currentUser, setCurrentUser] = useState(null);
     const [donations, setDonations] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [isDetectingLocation, setIsDetectingLocation] = useState(false);
 
     const [donationForm, setDonationForm] = useState({
         foodType: '',
         quantity: '',
         expiresInHours: '',
-        locationText: 'Fetching location...',
+        locationText: 'Click AUTO to detect location',
         location: { lat: null, lng: null },
     });
     const [message, setMessage] = useState(null);
@@ -183,7 +184,7 @@ const DonorDashboard = ({ onLogout }) => {
                 setCurrentUser(user);
                 setDonationForm(prev => ({
                     ...prev,
-                    locationText: user.location?.text || 'GPS not set, click Auto',
+                    locationText: user.location?.text || 'Click AUTO to detect location',
                     location: user.location || { lat: null, lng: null },
                 }));
             } else {
@@ -308,24 +309,92 @@ const DonorDashboard = ({ onLogout }) => {
     };
 
     const handleAutoGps = () => {
-        const defaultMockLocation = { text: 'Mock GPS Location (Delhi)', lat: 28.6139, lng: 77.2090 };
+        setIsDetectingLocation(true);
+        setMessage({ type: 'info', text: 'Detecting your location...' });
+        setDonationForm(prev => ({ ...prev, locationText: 'Detecting location...' }));
 
-        let userLocation = defaultMockLocation;
-
-        if (currentUser?.location && currentUser.location.lat !== null) {
-            userLocation = {
-                text: currentUser.location.text || 'Saved Location',
-                lat: currentUser.location.lat,
-                lng: currentUser.location.lng
-            };
+        if (!navigator.geolocation) {
+            setMessage({ type: 'error', text: 'Geolocation is not supported by your browser' });
+            setDonationForm(prev => ({ ...prev, locationText: 'Geolocation not supported' }));
+            setIsDetectingLocation(false);
+            return;
         }
 
-        setDonationForm(prev => ({
-            ...prev,
-            locationText: userLocation.text,
-            location: { lat: userLocation.lat, lng: userLocation.lng }
-        }));
-        setMessage({ type: 'success', text: `Location set to ${userLocation.text}` });
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const { latitude, longitude } = position.coords;
+                
+                try {
+                    const response = await fetch(
+                        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+                        {
+                            headers: {
+                                'User-Agent': 'FoodDonationApp/1.0'
+                            }
+                        }
+                    );
+                    
+                    const data = await response.json();
+                    const locationText = data.display_name || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+                    
+                    setDonationForm(prev => ({
+                        ...prev,
+                        locationText: locationText,
+                        location: { lat: latitude, lng: longitude }
+                    }));
+                    setMessage({ type: 'success', text: '📍 Current location detected successfully!' });
+                } catch (error) {
+                    console.error('Reverse geocoding error:', error);
+                    setDonationForm(prev => ({
+                        ...prev,
+                        locationText: `Current Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`,
+                        location: { lat: latitude, lng: longitude }
+                    }));
+                    setMessage({ type: 'success', text: '📍 Location detected (address lookup failed)' });
+                }
+                setIsDetectingLocation(false);
+            },
+            (error) => {
+                console.error('Geolocation error:', error);
+                
+                let errorMessage = 'Could not detect location';
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage = 'Location permission denied. Please enable location access in your browser settings.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage = 'Location information unavailable.';
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage = 'Location request timed out.';
+                        break;
+                }
+                
+                setMessage({ type: 'error', text: errorMessage });
+                
+                if (currentUser?.location && currentUser.location.lat !== null) {
+                    const savedLocation = {
+                        text: currentUser.location.text || 'Saved Location',
+                        lat: currentUser.location.lat,
+                        lng: currentUser.location.lng
+                    };
+                    setDonationForm(prev => ({
+                        ...prev,
+                        locationText: savedLocation.text,
+                        location: { lat: savedLocation.lat, lng: savedLocation.lng }
+                    }));
+                    setMessage({ type: 'info', text: 'Using your saved location instead' });
+                } else {
+                    setDonationForm(prev => ({ ...prev, locationText: 'Location detection failed - Click AUTO to retry' }));
+                }
+                setIsDetectingLocation(false);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
     };
 
     const buttonStyle = { backgroundColor: DARK_CHARCOAL };
@@ -407,7 +476,7 @@ const DonorDashboard = ({ onLogout }) => {
                             <h2 className="text-2xl font-bold mb-6 flex items-center font-semibold" style={{ color: DARK_CHARCOAL }}>
                                 <PlusCircle className="w-6 h-6 mr-2" style={{ color: PRIMARY_RED }} /> Quick Donation
                             </h2>
-                            <form onSubmit={handleCreateDonation} className="space-y-4">
+                            <div className="space-y-4">
                                 <FormInput
                                     id="foodType"
                                     label="Food Type (e.g., Rice, Meals)"
@@ -442,24 +511,38 @@ const DonorDashboard = ({ onLogout }) => {
                                         icon={MapPin}
                                         value={donationForm.locationText}
                                         onChange={(e) => setDonationForm(prev => ({ ...prev, locationText: e.target.value }))}
+                                        readOnly
                                     />
                                     <button
                                         type="button"
                                         onClick={handleAutoGps}
-                                        className="absolute top-0 right-0 mt-3 mr-3 p-2 text-sm font-semibold rounded-lg text-white transition duration-150 flex items-center bg-blue-500 hover:bg-blue-600 shadow-md cursor-pointer"
+                                        disabled={isDetectingLocation}
+                                        className={`absolute top-0 right-0 mt-3 mr-3 p-2 text-sm font-semibold rounded-lg text-white transition duration-150 flex items-center shadow-md ${
+                                            isDetectingLocation 
+                                                ? 'bg-gray-400 cursor-not-allowed' 
+                                                : 'bg-blue-500 hover:bg-blue-600 cursor-pointer'
+                                        }`}
                                     >
-                                        <Compass className="w-4 h-4 mr-1" />
-                                        Auto
+                                        <Compass className={`w-4 h-4 mr-1 ${isDetectingLocation ? 'animate-spin' : ''}`} />
+                                        {isDetectingLocation ? 'Detecting...' : 'Auto'}
                                     </button>
                                     <p className="text-xs text-gray-500 mt-1 font-semibold">
-                                        📍 {donationForm.location.lat?.toFixed(4)}, {donationForm.location.lng?.toFixed(4)}
+                                        {donationForm.location.lat !== null ? (
+                                            <>📍 {donationForm.location.lat?.toFixed(4)}, {donationForm.location.lng?.toFixed(4)}</>
+                                        ) : (
+                                            <>📍 No location set - Click AUTO button</>
+                                        )}
                                     </p>
                                 </div>
 
                                 <button
-                                    type="submit"
-                                    disabled={isLoading}
-                                    className="w-full py-3 mt-4 text-white font-bold rounded-lg transition duration-200 shadow-lg  active:scale-[0.98] flex items-center justify-center font-semibold cursor-pointer"
+                                    onClick={handleCreateDonation}
+                                    disabled={isLoading || donationForm.location.lat === null}
+                                    className={`w-full py-3 mt-4 text-white font-bold rounded-lg transition duration-200 shadow-lg active:scale-[0.98] flex items-center justify-center font-semibold ${
+                                        isLoading || donationForm.location.lat === null
+                                            ? 'opacity-50 cursor-not-allowed'
+                                            : 'cursor-pointer'
+                                    }`}
                                     style={buttonStyle}
                                 >
                                     {isLoading ? 'Creating...' : (
@@ -469,7 +552,7 @@ const DonorDashboard = ({ onLogout }) => {
                                         </>
                                     )}
                                 </button>
-                            </form>
+                            </div>
                         </div>
                     </div>
 
