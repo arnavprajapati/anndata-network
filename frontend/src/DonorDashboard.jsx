@@ -253,7 +253,6 @@ const DonorDashboard = ({ onLogout }) => {
                 body: JSON.stringify(donationForm),
             });
             if (response.ok) {
-                setMessage({ type: 'success', text: 'Donation created!' });
                 setDonationForm(p => ({ ...p, foodType: '', quantity: '', expiresInHours: '' }));
                 loadDonations();
             }
