@@ -20,7 +20,7 @@ const AuthPage = ({ onClose, onAuthSuccess }) => {
     const handleSwitchToLogin = () => setIsLogin(true);
 
     return (
-        <div className="w-full max-w-lg p-8 bg-white shadow-2xl rounded-2xl relative animate-fadeIn">
+        <div className=" w-[400px] bg-white p-8  shadow-2xl rounded-2xl relative animate-fadeIn">
             <button
                 onClick={onClose}
                 className="absolute top-4 right-4 text-gray-400 transition-colors duration-200 transform"
@@ -43,14 +43,12 @@ const AuthPage = ({ onClose, onAuthSuccess }) => {
 const Modal = ({ children, onClose }) => {
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 transition-all duration-300 animate-fadeIn"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 transition-all duration-300 animate-fadeIn"
             onClick={(e) => {
-                if (e.target === e.currentTarget) {
-                    onClose();
-                }
+                if (e.target === e.currentTarget) onClose();
             }}
         >
-            <div className="relative z-50 animate-scaleIn">
+            <div className="relative z-50 animate-scaleIn w-full  flex justify-center">
                 {children}
             </div>
         </div>

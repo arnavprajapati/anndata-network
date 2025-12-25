@@ -1,27 +1,10 @@
 import React, { useState } from 'react';
-import { Activity, LogIn, ChevronDown, Menu, X, Heart } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import image1 from './assets/logo.jpg'
-const navLinks = [
-    // { name: "Donate", href: "/donate", hasDropdown: false },
-    // { name: "Our Impact", href: "/impact", hasDropdown: false },
-    // { name: "Testimonials", href: "/testimonial", hasDropdown: false },
-    // { name: "About Us", href: "/about", hasDropdown: false },
-];
+import { Activity, LogIn, ChevronDown, Menu, X, LayoutDashboard, LogOut } from 'lucide-react';
+import { Link, NavLink } from 'react-router-dom';
+import image1 from './assets/logo.jpg';
 
-const NavItem = ({ name, href, hasDropdown, onClick }) => (
-    <Link
-        to={href}
-        onClick={onClick}
-        className="text-gray-700 hover:text-[#387ED1] font-semibold text-base transition duration-200 flex items-center space-x-1 whitespace-nowrap group relative"
-    >
-        <span className="relative">
-            {name}
-            <span className="absolute left-0 bottom-0 w-0 h-0.5 bg-[#387ED1] transition-all duration-300 group-hover:w-full"></span>
-        </span>
-        {hasDropdown && <ChevronDown className="w-4 h-4 mt-0.5 ml-1 group-hover:rotate-180 transition-transform duration-300" />}
-    </Link>
-);
+const navLinks = [
+];
 
 function Navbar({ onLoginClick, isLoggedIn, onLogout, userRole, userName }) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -29,9 +12,11 @@ function Navbar({ onLoginClick, isLoggedIn, onLogout, userRole, userName }) {
     const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
     const closeMobileMenu = () => setMobileMenuOpen(false);
 
+    const dashboardPath = userRole === 'ngo' ? '/ngo-dashboard' : '/donor-dashboard';
+
     return (
-        <nav className="bg-white fixed top-0 w-full z-50 shadow-md border-b border-gray-200">
-            <div className="w-full mx-auto px-4 sm:px-6 lg:px-20 py-4">
+        <nav className="bg-white fixed top-0 w-full z-[100] shadow-md border-b border-gray-100">
+            <div className="w-full mx-auto px-4 sm:px-6 lg:px-20 py-3">
                 <div className="flex items-center justify-between">
 
                     <Link to="/" className="flex items-center space-x-2 cursor-pointer group" onClick={closeMobileMenu}>
@@ -39,109 +24,106 @@ function Navbar({ onLoginClick, isLoggedIn, onLogout, userRole, userName }) {
                             <img
                                 src={image1}
                                 alt="Logo"
-                                className="w-10 h-16 bg-amber-400 object-cover group-hover:scale-110 transition-transform duration-300"
+                                className="w-10 h-14 object-contain group-hover:scale-105 transition-transform duration-300"
                             />
-                            <Activity className="w-4 h-4 text-white absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" strokeWidth={3} />
                         </div>
-                        <span className="text-3xl font-extrabold text-[#333333] group-hover:text-[#387ED1] transition-colors duration-300">
+                        <span className="text-2xl font-black text-[#333333] tracking-tighter group-hover:text-[#2D8659] transition-colors duration-300">
                             Annदाता
-
                         </span>
                     </Link>
 
                     <div className="hidden lg:flex items-center space-x-8">
-                        {!isLoggedIn && (
-                            <>
+                        {!isLoggedIn ? (
+                            <div className="flex items-center space-x-6">
                                 {navLinks.map((link) => (
-                                    <NavItem key={link.name} {...link} />
+                                    <NavLink 
+                                        key={link.name} 
+                                        to={link.href}
+                                        className={({ isActive }) => 
+                                            `text-sm font-bold uppercase tracking-wider transition duration-200 ${isActive ? 'text-[#2D8659]' : 'text-gray-600 hover:text-[#2D8659]'}`
+                                        }
+                                    >
+                                        {link.name}
+                                    </NavLink>
                                 ))}
-                            </>
-                        )}
-
-                        {isLoggedIn ? (
-                            <div className="flex items-center space-x-4">
-                                <div className="flex items-center space-x-2 bg-gray-100 px-4 py-2 rounded-lg">
-                                    <div className="w-8 h-8 bg-[#387ED1] rounded-full flex items-center justify-center text-white font-bold">
-                                        {userName?.charAt(0).toUpperCase() || 'U'}
-                                    </div>
-                                    <div className="text-left">
-                                        <p className="text-sm font-bold text-gray-800">{userName || 'User'}</p>
-                                        <p className="text-xs text-gray-500 capitalize">{userRole || 'Member'}</p>
-                                    </div>
-                                </div>
-
                                 <button
-                                    onClick={onLogout}
-                                    className="py-2 px-6 text-white rounded-lg font-bold bg-gray-600 hover:bg-gray-700 transition duration-200 flex items-center shadow-md active:scale-95 transform cursor-pointer"
+                                    onClick={onLoginClick}
+                                    className="py-2.5 px-6 text-white rounded-xl font-black text-sm bg-[#2D8659] hover:bg-black transition duration-300 flex items-center shadow-lg active:scale-95 transform cursor-pointer uppercase tracking-widest"
                                 >
-                                    <LogIn className="w-5 h-5 mr-2 rotate-180" />
-                                    <span>Logout</span>
+                                    <LogIn className="w-4 h-4 mr-2" />
+                                    Login / Sign Up
                                 </button>
                             </div>
                         ) : (
-                            <button
-                                onClick={onLoginClick}
-                                className="py-2.5 px-6 text-white rounded-lg font-bold bg-[#387ED1] hover:bg-black transition duration-200 flex items-center shadow-md active:scale-95 transform cursor-pointer"
-                            >
-                                <LogIn className="w-5 h-5 mr-2" />
-                                <span>Login / Sign Up</span>
-                            </button>
+                            <div className="flex items-center space-x-4">
+                                <Link 
+                                    to={dashboardPath}
+                                    className="flex items-center space-x-2 bg-gray-50 border border-gray-200 px-4 py-2 rounded-xl hover:border-[#2D8659] transition group cursor-pointer"
+                                >
+                                    <div className="w-8 h-8 bg-[#2D8659] rounded-lg flex items-center justify-center text-white shadow-sm group-hover:rotate-12 transition-transform">
+                                        <LayoutDashboard className="w-4 h-4" />
+                                    </div>
+                                    <div className="text-left leading-tight">
+                                        <p className="text-xs font-black text-gray-800 uppercase tracking-tighter">{userName || 'User'}</p>
+                                        <p className="text-[10px] text-gray-500 font-bold uppercase">{userRole || 'Member'}</p>
+                                    </div>
+                                </Link>
+
+                                <button
+                                    onClick={onLogout}
+                                    className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition duration-200 cursor-pointer border border-transparent hover:border-red-100"
+                                    title="Logout"
+                                >
+                                    <LogOut className="w-5 h-5" />
+                                </button>
+                            </div>
                         )}
                     </div>
 
                     <button
                         onClick={toggleMobileMenu}
-                        className="lg:hidden p-2 text-gray-700 hover:text-[#387ED1] transition duration-200"
-                        aria-label="Toggle menu"
+                        className="lg:hidden p-2 rounded-lg bg-gray-50 text-gray-700 hover:text-[#2D8659] transition duration-200"
                     >
                         {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                     </button>
                 </div>
 
                 {mobileMenuOpen && (
-                    <div className="lg:hidden mt-4 pb-4 border-t border-gray-200 pt-4 animate-slideDown">
-                        {!isLoggedIn && (
-                            <div className="space-y-3 mb-4">
-                                {navLinks.map((link) => (
-                                    <NavItem key={link.name} {...link} onClick={closeMobileMenu} />
-                                ))}
-                            </div>
-                        )}
-
-                        {isLoggedIn ? (
-                            <div className="space-y-3">
-                                <div className="flex items-center space-x-3 bg-gray-100 p-3 rounded-lg">
-                                    <div className="w-10 h-10 bg-[#387ED1] rounded-full flex items-center justify-center text-white font-bold text-lg">
-                                        {userName?.charAt(0).toUpperCase() || 'U'}
-                                    </div>
-                                    <div>
-                                        <p className="font-bold text-gray-800">{userName || 'User'}</p>
-                                        <p className="text-sm text-gray-500 capitalize">{userRole || 'Member'}</p>
-                                    </div>
-                                </div>
-
+                    <div className="lg:hidden mt-3 pb-6 border-t border-gray-100 pt-4 animate-in slide-in-from-top duration-300">
+                        {!isLoggedIn ? (
+                            <div className="space-y-4">
                                 <button
-                                    onClick={() => {
-                                        onLogout();
-                                        closeMobileMenu();
-                                    }}
-                                    className="w-full py-3 text-white rounded-lg font-bold bg-gray-600 hover:bg-gray-700 transition duration-200 flex items-center justify-center shadow-md cursor-pointer"
+                                    onClick={() => { onLoginClick(); closeMobileMenu(); }}
+                                    className="w-full py-4 text-white rounded-2xl font-black bg-[#2D8659] shadow-xl flex items-center justify-center"
                                 >
-                                    <LogIn className="w-5 h-5 mr-2 rotate-180" />
-                                    <span>Logout</span>
+                                    <LogIn className="w-5 h-5 mr-2" />
+                                    LOGIN / SIGN UP
                                 </button>
                             </div>
                         ) : (
-                            <button
-                                onClick={() => {
-                                    onLoginClick();
-                                    closeMobileMenu();
-                                }}
-                                className="w-full py-3 text-white rounded-lg font-bold bg-[#387ED1] hover:bg-[#a9303c] transition duration-200 flex items-center justify-center shadow-md"
-                            >
-                                <LogIn className="w-5 h-5 mr-2" />
-                                <span>Login / Sign Up</span>
-                            </button>
+                            <div className="space-y-4">
+                                <Link 
+                                    to={dashboardPath}
+                                    onClick={closeMobileMenu}
+                                    className="flex items-center space-x-4 bg-gray-50 p-4 rounded-2xl border border-gray-200"
+                                >
+                                    <div className="w-12 h-12 bg-[#2D8659] rounded-xl flex items-center justify-center text-white font-black text-xl">
+                                        {userName?.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <p className="font-black text-gray-800 uppercase tracking-tight">{userName}</p>
+                                        <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">{userRole} PANEL</p>
+                                    </div>
+                                </Link>
+
+                                <button
+                                    onClick={() => { onLogout(); closeMobileMenu(); }}
+                                    className="w-full py-4 text-red-600 rounded-2xl font-black bg-red-50 flex items-center justify-center border border-red-100"
+                                >
+                                    <LogOut className="w-5 h-5 mr-2" />
+                                    LOGOUT
+                                </button>
+                            </div>
                         )}
                     </div>
                 )}

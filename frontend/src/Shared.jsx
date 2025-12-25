@@ -40,7 +40,7 @@ export const FormInput = ({ id, label, type = 'text', icon: Icon, value, onChang
                 value={value}
                 onChange={onChange}
                 required={required}
-                className="w-full p-3 focus:outline-none placeholder-gray-500 text-sm font-medium"
+                className="w-full p-3 focus:outline-none placeholder-gray-500 text-sm font-semibold"
             />
         </div>
     </div>
@@ -50,6 +50,6 @@ export const MessageDisplay = ({ message }) => (
     <div className={`p-4 mb-6 rounded-lg flex items-start ${message.type === 'success' ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'
         }`}>
         {message.type === 'success' ? <CheckCircle className="w-5 h-5 mr-3 flex-shrink-0 mt-0.5" /> : <XCircle className="w-5 h-5 mr-3 flex-shrink-0 mt-0.5" />}
-        <p className="text-sm font-medium leading-relaxed">{message.text}</p>
+        <p className="text-sm font-semibold leading-relaxed">{message.text}</p>
     </div>
 );
