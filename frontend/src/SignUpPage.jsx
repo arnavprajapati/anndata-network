@@ -11,7 +11,7 @@ const SignupPage = ({ onSwitchToLogin, onSignupSuccess }) => {
         password: '',
         role: 'donor',
         locationText: '',
-        location: { lat: null, lng: null, text: '' }, // Added location object
+        location: { lat: null, lng: null, text: '' }, 
         securityQuestion: "What city were you born in?",
         securityAnswer: ''
     });
@@ -29,13 +29,11 @@ const SignupPage = ({ onSwitchToLogin, onSignupSuccess }) => {
 
         setIsDetecting(true);
 
-        // First try with high accuracy, longer timeout
         navigator.geolocation.getCurrentPosition(
             async (position) => {
                 try {
                     const { latitude, longitude } = position.coords;
 
-                    // Save coordinates immediately first
                     const fallbackText = `Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`;
                     setFormData(prev => ({
                         ...prev,
@@ -48,7 +46,6 @@ const SignupPage = ({ onSwitchToLogin, onSignupSuccess }) => {
                     }));
 
 
-                    // Then try to fetch address (with timeout)
                     try {
                         const controller = new AbortController();
                         const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -81,7 +78,6 @@ const SignupPage = ({ onSwitchToLogin, onSignupSuccess }) => {
 
                         }
                     } catch (addressError) {
-                        // Address fetch failed but we already have coordinates
                         console.log('Address lookup skipped or failed:', addressError.message);
                         setMessage({ type: 'success', text: '📍 Location detected!' });
                     }
@@ -96,7 +92,6 @@ const SignupPage = ({ onSwitchToLogin, onSignupSuccess }) => {
             (error) => {
                 console.error('Geolocation error:', error);
 
-                // If high accuracy fails, try without it
                 if (error.code === error.TIMEOUT && error.TIMEOUT) {
                     setMessage({ type: 'info', text: 'Retrying with lower accuracy...' });
 
@@ -196,7 +191,6 @@ const SignupPage = ({ onSwitchToLogin, onSignupSuccess }) => {
         setIsLoading(true);
 
         try {
-            // Send the complete location object to backend
             const payload = {
                 name: formData.name,
                 email: formData.email,
@@ -204,7 +198,6 @@ const SignupPage = ({ onSwitchToLogin, onSignupSuccess }) => {
                 role: formData.role,
                 securityQuestion: formData.securityQuestion,
                 securityAnswer: formData.securityAnswer,
-                location: formData.location // Send full location object with lat, lng, text
             };
 
             const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
